@@ -35,8 +35,8 @@ namespace WAD64.Core
         public static bool AreEssentialReferencesInitialized()
         {
             return Player != null &&
-                   GameManager != null &&
                    MainCamera != null;
+            // GameManager пока не обязателен для тестирования
         }
 
         /// <summary>

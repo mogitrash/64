@@ -131,38 +131,59 @@ namespace WAD64.Core
         {
             Log("Initializing player...");
 
-            if (playerPrefab == null)
+            GameObject playerGO = null;
+
+            // Сначала пытаемся найти игрока в сцене
+            var existingPlayer = FindObjectOfType<WAD64.Player.PlayerController>();
+            if (existingPlayer != null)
             {
-                Debug.LogError("[GameEntryPoint] Player prefab is not assigned!");
+                playerGO = existingPlayer.gameObject;
+                Log("Found existing player in scene");
+
+                // Активируем игрока, если он отключен
+                if (!playerGO.activeInHierarchy)
+                {
+                    playerGO.SetActive(true);
+                }
+
+                // Перемещаем к точке спавна, если она задана
+                if (playerSpawnPoint != null)
+                {
+                    existingPlayer.Teleport(playerSpawnPoint.position, playerSpawnPoint.rotation);
+                }
+            }
+            // Если игрока нет в сцене, создаем из префаба
+            else if (playerPrefab != null)
+            {
+                Vector3 spawnPosition = playerSpawnPoint != null ?
+                    playerSpawnPoint.position :
+                    Vector3.zero;
+
+                Quaternion spawnRotation = playerSpawnPoint != null ?
+                    playerSpawnPoint.rotation :
+                    Quaternion.identity;
+
+                playerGO = Instantiate(playerPrefab, spawnPosition, spawnRotation);
+                Log("Created player from prefab");
+            }
+            else
+            {
+                Debug.LogError("[GameEntryPoint] No player found in scene and no player prefab assigned!");
                 return;
             }
 
-            // Определяем позицию спавна
-            Vector3 spawnPosition = playerSpawnPoint != null ?
-                playerSpawnPoint.position :
-                Vector3.zero;
+            // Регистрируем компоненты игрока
+            CoreReferences.Player = playerGO.GetComponent<WAD64.Player.PlayerController>();
+            CoreReferences.PlayerMovement = playerGO.GetComponent<WAD64.Player.PlayerMovement>();
+            CoreReferences.PlayerHealth = playerGO.GetComponent<WAD64.Player.PlayerHealth>();
+            CoreReferences.PlayerCamera = playerGO.GetComponentInChildren<WAD64.Player.PlayerCamera>();
 
-            Quaternion spawnRotation = playerSpawnPoint != null ?
-                playerSpawnPoint.rotation :
-                Quaternion.identity;
-
-            // Создаем игрока
-            var playerGO = Instantiate(playerPrefab, spawnPosition, spawnRotation);
-            CoreReferences.Player = playerGO.GetComponent<MonoBehaviour>();
-
-            // Получаем компоненты игрока (будут настроены позже, когда создадим соответствующие классы)
-            // Используем GetComponent с проверкой на null
-            var playerMovement = playerGO.GetComponent("PlayerMovement") as MonoBehaviour;
-            if (playerMovement != null) CoreReferences.PlayerMovement = playerMovement;
-
-            var playerHealth = playerGO.GetComponent("PlayerHealth") as MonoBehaviour;
-            if (playerHealth != null) CoreReferences.PlayerHealth = playerHealth;
-
-            var weaponManager = playerGO.GetComponent("WeaponManager") as MonoBehaviour;
-            if (weaponManager != null) CoreReferences.WeaponManager = weaponManager;
-
-            var playerCamera = playerGO.GetComponent("PlayerCamera") as MonoBehaviour;
-            if (playerCamera != null) CoreReferences.PlayerCamera = playerCamera;
+            // Регистрируем главную камеру
+            Camera playerCamera = playerGO.GetComponentInChildren<Camera>();
+            if (playerCamera != null)
+            {
+                CoreReferences.MainCamera = playerCamera;
+            }
 
             Log("Player initialized.");
         }
