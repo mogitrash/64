@@ -65,7 +65,7 @@ namespace WAD64.Core
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void LogReferenceStatus()
         {
-            Debug.Log($"[CoreReferences] Essential references initialized: {AreEssentialReferencesInitialized()}");
+            // Логирование отключено
         }
 #endif
     }

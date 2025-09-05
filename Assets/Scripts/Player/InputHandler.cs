@@ -62,6 +62,7 @@ namespace WAD64.Player
         public System.Action OnPausePressed;
         public System.Action OnInteractPressed;
         public System.Action<float> OnWeaponSwitch;
+        public System.Action<int> OnWeaponNumberPressed;
 
         // Properties
         public Vector2 MoveInput => enableInput ? moveInput : Vector2.zero;
@@ -100,14 +101,12 @@ namespace WAD64.Player
             playerInput = GetComponent<PlayerInput>();
             if (playerInput == null)
             {
-                Debug.LogError("[InputHandler] PlayerInput component not found!");
                 return;
             }
 
             // Проверяем, что у PlayerInput есть actions
             if (playerInput.actions == null)
             {
-                Debug.LogError("[InputHandler] PlayerInput has no actions assigned!");
                 return;
             }
 
@@ -115,8 +114,6 @@ namespace WAD64.Player
             gameplayActionMap = playerInput.actions.FindActionMap("Player");
             if (gameplayActionMap == null)
             {
-                Debug.LogError("[InputHandler] Player action map not found! Available maps: " +
-                    string.Join(", ", playerInput.actions.actionMaps.Select(map => map.name)));
                 return;
             }
 
@@ -124,8 +121,6 @@ namespace WAD64.Player
             InitializeMovementActions();
             InitializeCombatActions();
             InitializeUIActions();
-
-            Debug.Log("[InputHandler] Input system initialized");
         }
 
         private void InitializeMovementActions()
@@ -146,8 +141,7 @@ namespace WAD64.Player
         private void InitializeCombatActions()
         {
             fireAction = gameplayActionMap.FindAction("Attack");
-            // Временно отключаем несуществующие действия
-            // reloadAction = gameplayActionMap.FindAction("Reload");
+            reloadAction = gameplayActionMap.FindAction("Reload");
             // weaponSwitchAction = gameplayActionMap.FindAction("WeaponSwitch");
 
             // Подписываемся на события
@@ -157,10 +151,10 @@ namespace WAD64.Player
                 fireAction.canceled += OnFireCanceled;
             }
 
-            // if (reloadAction != null)
-            // {
-            //     reloadAction.performed += OnReloadPerformed;
-            // }
+            if (reloadAction != null)
+            {
+                reloadAction.performed += OnReloadPerformed;
+            }
 
             // if (weaponSwitchAction != null)
             // {
@@ -170,15 +164,14 @@ namespace WAD64.Player
 
         private void InitializeUIActions()
         {
-            // Временно отключаем Pause (можно использовать Escape)
-            // pauseAction = gameplayActionMap.FindAction("Pause");
+            pauseAction = gameplayActionMap.FindAction("Pause");
             interactAction = gameplayActionMap.FindAction("Interact");
 
             // Подписываемся на события
-            // if (pauseAction != null)
-            // {
-            //     pauseAction.performed += OnPausePerformed;
-            // }
+            if (pauseAction != null)
+            {
+                pauseAction.performed += OnPausePerformed;
+            }
 
             if (interactAction != null)
             {
@@ -201,6 +194,37 @@ namespace WAD64.Player
             // Button states
             runPressed = runAction?.IsPressed() ?? false;
             fireHeld = fireAction?.IsPressed() ?? false;
+
+            // Резервная проверка перезарядки через прямой ввод (если Input Action не настроен)
+            if (reloadAction == null && Input.GetKeyDown(KeyCode.R))
+            {
+                OnReloadPressed?.Invoke();
+            }
+
+            // Переключение оружий по цифрам (всегда активно)
+            if (Input.GetKeyDown(KeyCode.Alpha1))
+            {
+                OnWeaponNumberPressed?.Invoke(0);
+            }
+            else if (Input.GetKeyDown(KeyCode.Alpha2))
+            {
+                OnWeaponNumberPressed?.Invoke(1);
+            }
+            else if (Input.GetKeyDown(KeyCode.Alpha3))
+            {
+                OnWeaponNumberPressed?.Invoke(2);
+            }
+
+            // Переключение оружий колесиком мыши (всегда активно)
+            float scroll = Input.GetAxis("Mouse ScrollWheel");
+            if (scroll > 0f)
+            {
+                OnWeaponSwitch?.Invoke(1f);
+            }
+            else if (scroll < 0f)
+            {
+                OnWeaponSwitch?.Invoke(-1f);
+            }
         }
 
         private void UpdateInputBuffers()

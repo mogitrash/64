@@ -18,8 +18,6 @@ namespace WAD64.Managers
         [SerializeField] private int enemiesKilled = 0;
         [SerializeField] private int pickupsCollected = 0;
 
-        [Header("Debug")]
-        [SerializeField] private bool logGameEvents = true;
 
         // Events
         public System.Action OnGamePaused;
@@ -41,7 +39,6 @@ namespace WAD64.Managers
             // Убеждаемся, что GameManager единственный
             if (CoreReferences.GameManager != null && CoreReferences.GameManager != this)
             {
-                Debug.LogWarning("[GameManager] Another GameManager already exists! Destroying this one.");
                 Destroy(gameObject);
                 return;
             }
@@ -49,11 +46,9 @@ namespace WAD64.Managers
 
         public void Initialize()
         {
-            Log("GameManager initialized");
-            
             // Сброс состояния игры
             ResetGameState();
-            
+
             // Подписка на события игрока (если уже создан)
             SubscribeToPlayerEvents();
         }
@@ -79,8 +74,7 @@ namespace WAD64.Managers
 
             isPaused = true;
             Time.timeScale = 0f;
-            
-            Log("Game paused");
+
             OnGamePaused?.Invoke();
         }
 
@@ -90,8 +84,7 @@ namespace WAD64.Managers
 
             isPaused = false;
             Time.timeScale = 1f;
-            
-            Log("Game resumed");
+
             OnGameResumed?.Invoke();
         }
 
@@ -102,18 +95,15 @@ namespace WAD64.Managers
             isGameOver = true;
             isPaused = true;
             Time.timeScale = 0f;
-            
-            Log($"Game Over! Time: {gameTime:F1}s, Enemies: {enemiesKilled}, Pickups: {pickupsCollected}");
+
             OnGameOver?.Invoke();
         }
 
         public void RestartLevel()
         {
-            Log("Restarting level...");
-            
             // Восстанавливаем время
             Time.timeScale = 1f;
-            
+
             // Перезагружаем сцену
             UnityEngine.SceneManagement.SceneManager.LoadScene(
                 UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
@@ -123,7 +113,6 @@ namespace WAD64.Managers
         {
             if (isGameOver) return;
 
-            Log($"Level completed! Time: {gameTime:F1}s, Enemies: {enemiesKilled}, Pickups: {pickupsCollected}");
             OnLevelCompleted?.Invoke();
         }
 
@@ -150,20 +139,17 @@ namespace WAD64.Managers
         public void OnEnemyKilledHandler(int enemyType)
         {
             enemiesKilled++;
-            Log($"Enemy killed! Total: {enemiesKilled}");
             OnEnemyKilled?.Invoke(enemyType);
         }
 
         public void OnPickupCollectedHandler(string pickupType)
         {
             pickupsCollected++;
-            Log($"Pickup collected: {pickupType}. Total: {pickupsCollected}");
             OnPickupCollected?.Invoke(pickupType);
         }
 
         public void OnPlayerDeathHandler()
         {
-            Log("Player died!");
             GameOver();
         }
 
@@ -190,13 +176,6 @@ namespace WAD64.Managers
             }
         }
 
-        private void Log(string message)
-        {
-            if (logGameEvents)
-            {
-                Debug.Log($"[GameManager] {message}");
-            }
-        }
 
         #endregion
 

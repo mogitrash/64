@@ -26,7 +26,6 @@ namespace WAD64.Core
 
         [Header("Settings")]
         [SerializeField] private bool initializeOnAwake = true;
-        [SerializeField] private bool logInitializationSteps = true;
 
         private void Awake()
         {
@@ -41,8 +40,6 @@ namespace WAD64.Core
         /// </summary>
         public void InitializeGame()
         {
-            Log("Starting game initialization...");
-
             // 1. Очищаем предыдущие ссылки (на случай перезапуска)
             CoreReferences.ClearReferences();
 
@@ -57,14 +54,10 @@ namespace WAD64.Core
 
             // 5. Финальная проверка
             ValidateInitialization();
-
-            Log("Game initialization completed!");
         }
 
         private void InitializeBasicReferences()
         {
-            Log("Initializing basic references...");
-
             // Камера
             CoreReferences.MainCamera = Camera.main;
             if (CoreReferences.MainCamera == null)
@@ -77,12 +70,10 @@ namespace WAD64.Core
             CoreReferences.EnemySpawnRoot = enemySpawnRoot;
             CoreReferences.PickupSpawnRoot = pickupSpawnRoot;
 
-            Log("Basic references initialized.");
         }
 
         private void InitializeManagers()
         {
-            Log("Initializing managers...");
 
 
             // UI Manager
@@ -109,12 +100,10 @@ namespace WAD64.Core
                 }
             }
 
-            Log("Managers initialized.");
         }
 
         private void InitializePlayer()
         {
-            Log("Initializing player...");
 
             GameObject playerGO = null;
 
@@ -123,7 +112,6 @@ namespace WAD64.Core
             if (existingPlayer != null)
             {
                 playerGO = existingPlayer.gameObject;
-                Log("Found existing player in scene");
 
                 // Активируем игрока, если он отключен
                 if (!playerGO.activeInHierarchy)
@@ -149,11 +137,9 @@ namespace WAD64.Core
                     Quaternion.identity;
 
                 playerGO = Instantiate(playerPrefab, spawnPosition, spawnRotation);
-                Log("Created player from prefab");
             }
             else
             {
-                Debug.LogError("[GameEntryPoint] No player found in scene and no player prefab assigned!");
                 return;
             }
 
@@ -170,38 +156,18 @@ namespace WAD64.Core
                 CoreReferences.MainCamera = playerCamera;
             }
 
-            Log("Player initialized.");
         }
 
         private void ValidateInitialization()
         {
-            Log("Validating initialization...");
 
             if (!CoreReferences.AreEssentialReferencesInitialized())
             {
-                Debug.LogError("[GameEntryPoint] Critical initialization failure! Essential references are missing.");
                 return;
             }
 
-            Log("All essential systems initialized successfully!");
-
-#if UNITY_EDITOR
-            // В редакторе выводим подробную информацию
-            Debug.Log($"[GameEntryPoint] Initialization Summary:\n" +
-                     $"Player: {(CoreReferences.Player != null ? "✓" : "✗")}\n" +
-                     $"GameManager: {(CoreReferences.GameManager != null ? "✓" : "✗")}\n" +
-                     $"UIManager: {(CoreReferences.UIManager != null ? "✓" : "✗")}\n" +
-                     $"MainCamera: {(CoreReferences.MainCamera != null ? "✓" : "✗")}");
-#endif
         }
 
-        private void Log(string message)
-        {
-            if (logInitializationSteps)
-            {
-                Debug.Log($"[GameEntryPoint] {message}");
-            }
-        }
 
         private void OnValidate()
         {

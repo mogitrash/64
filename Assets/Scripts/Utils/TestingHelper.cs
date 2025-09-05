@@ -12,12 +12,13 @@ namespace WAD64.Utils
         [Header("Display Settings")]
         [SerializeField] private bool showPlayerInfo = true;
         [SerializeField] private bool showInputInfo = true;
+        [SerializeField] private bool showWeaponInfo = true;
         [SerializeField] private bool showDebugKeys = true;
         [SerializeField] private KeyCode toggleInfoKey = KeyCode.F1;
         [SerializeField] private KeyCode damageTestKey = KeyCode.F2;
         [SerializeField] private KeyCode teleportTestKey = KeyCode.F3;
 
-        private bool displayEnabled = true;
+        private bool displayEnabled = false;
         private GUIStyle labelStyle;
         private GUIStyle boxStyle;
 
@@ -26,7 +27,7 @@ namespace WAD64.Utils
             // Настраиваем стили для GUI
             labelStyle = new GUIStyle();
             labelStyle.normal.textColor = Color.white;
-            labelStyle.fontSize = 14;
+            labelStyle.fontSize = 8;
 
             boxStyle = new GUIStyle();
             boxStyle.normal.background = MakeTexture(2, 2, new Color(0, 0, 0, 0.7f));
@@ -62,6 +63,18 @@ namespace WAD64.Utils
             {
                 TestCameraShake();
             }
+
+            // Тест принудительной перезарядки
+            if (Input.GetKeyDown(KeyCode.F5))
+            {
+                TestForceReload();
+            }
+
+            // Тест выстрела
+            if (Input.GetKeyDown(KeyCode.F6))
+            {
+                TestShot();
+            }
         }
 
         private void OnGUI()
@@ -88,9 +101,17 @@ namespace WAD64.Utils
             if (showInputInfo)
             {
                 DisplayInputInfo();
+                GUILayout.Space(10);
+            }
+
+            if (showWeaponInfo)
+            {
+                DisplayWeaponInfo();
             }
 
             GUILayout.EndArea();
+
+
         }
 
         private void DisplayDebugKeys()
@@ -100,6 +121,10 @@ namespace WAD64.Utils
             GUILayout.Label($"{damageTestKey}: Test Damage (10 HP)", labelStyle);
             GUILayout.Label($"{teleportTestKey}: Teleport to Spawn", labelStyle);
             GUILayout.Label("F4: Test Camera Shake", labelStyle);
+            GUILayout.Label("F5: Force Reload Weapon", labelStyle);
+            GUILayout.Label("F6: Test Shot", labelStyle);
+            GUILayout.Label("1/2: Switch Weapons", labelStyle);
+            GUILayout.Label("Mouse Wheel: Cycle Weapons", labelStyle);
             GUILayout.Label("P: Pause/Resume Game", labelStyle);
             GUILayout.Label("R: Restart Level", labelStyle);
         }
@@ -165,6 +190,61 @@ namespace WAD64.Utils
             GUILayout.Label($"Fire Buffered: {input.HasFireBuffered}", labelStyle);
         }
 
+        private void DisplayWeaponInfo()
+        {
+            var player = CoreReferences.Player as WAD64.Player.PlayerController;
+            var weaponManager = CoreReferences.WeaponManager as WAD64.Weapons.WeaponManager;
+
+            GUILayout.Label("=== Weapon Info ===", labelStyle);
+
+            // Расширенная диагностика
+            GUILayout.Label($"Player.Weapons: {(player?.Weapons != null ? "Found" : "NULL")}", labelStyle);
+            GUILayout.Label($"CoreReferences.WeaponManager: {(weaponManager != null ? "Found" : "NULL")}", labelStyle);
+
+            if (player?.Weapons == null && weaponManager == null)
+            {
+                GUILayout.Label("WeaponManager not found!", labelStyle);
+                GUILayout.Label("Make sure WeaponManager is child of Player!", labelStyle);
+                return;
+            }
+
+            var manager = player?.Weapons ?? weaponManager;
+
+            GUILayout.Label($"Weapon Count: {manager.WeaponCount}", labelStyle);
+
+            if (!manager.HasWeapon)
+            {
+                GUILayout.Label("No weapon equipped!", labelStyle);
+                GUILayout.Label("Add weapons to WeaponManager in inspector!", labelStyle);
+                return;
+            }
+
+            var weapon = manager.CurrentWeapon;
+            GUILayout.Label($"Current: {weapon.WeaponName}", labelStyle);
+            GUILayout.Label($"Ammo: {weapon.CurrentAmmo}/{weapon.MaxAmmo}", labelStyle);
+            GUILayout.Label($"Damage: {weapon.Damage}", labelStyle);
+            GUILayout.Label($"Range: {weapon.Range}m", labelStyle);
+            GUILayout.Label($"Can Fire: {weapon.CanFire}", labelStyle);
+            GUILayout.Label($"Reloading: {weapon.IsReloading} ({weapon.ReloadProgress:P0})", labelStyle);
+
+            // Информация о последнем выстреле
+            var pistol = weapon as WAD64.Weapons.Pistol;
+            var shotgun = weapon as WAD64.Weapons.Shotgun;
+
+            if (pistol != null && pistol.HasRecentShot())
+            {
+                var shotInfo = pistol.GetLastShotInfo();
+                GUILayout.Label($"Last Shot: {(shotInfo.hit ? "HIT" : "MISS")}", labelStyle);
+                GUILayout.Label($"Distance: {Vector3.Distance(shotInfo.origin, shotInfo.hitPoint):F1}m", labelStyle);
+            }
+            else if (shotgun != null && shotgun.HasRecentShot())
+            {
+                var shotInfo = shotgun.GetLastShotInfo();
+                GUILayout.Label($"Last Shot: {shotInfo.totalHits}/8 pellets hit", labelStyle);
+                GUILayout.Label($"Hit Rate: {(shotInfo.totalHits / 8f):P0}", labelStyle);
+            }
+        }
+
         #region Test Functions
 
         private void TestDamage()
@@ -173,7 +253,6 @@ namespace WAD64.Utils
             if (health != null)
             {
                 health.TakeDamage(10f, WAD64.Player.DamageType.Normal);
-                Debug.Log("[TestingHelper] Applied 10 damage to player");
             }
         }
 
@@ -187,12 +266,10 @@ namespace WAD64.Utils
                 if (playerSpawn != null)
                 {
                     player.Teleport(playerSpawn.transform.position);
-                    Debug.Log("[TestingHelper] Teleported player to spawn");
                 }
                 else
                 {
                     player.Teleport(Vector3.zero + Vector3.up);
-                    Debug.Log("[TestingHelper] Teleported player to origin");
                 }
             }
         }
@@ -203,7 +280,24 @@ namespace WAD64.Utils
             if (camera != null)
             {
                 camera.AddCameraShake(1f, 0.5f);
-                Debug.Log("[TestingHelper] Applied camera shake");
+            }
+        }
+
+        private void TestForceReload()
+        {
+            var weaponManager = CoreReferences.WeaponManager as WAD64.Weapons.WeaponManager;
+            if (weaponManager?.CurrentWeapon != null)
+            {
+                weaponManager.CurrentWeapon.ForceReload();
+            }
+        }
+
+        private void TestShot()
+        {
+            var weaponManager = CoreReferences.WeaponManager as WAD64.Weapons.WeaponManager;
+            if (weaponManager?.CurrentWeapon != null)
+            {
+                bool fired = weaponManager.CurrentWeapon.TryFire();
             }
         }
 
