@@ -25,12 +25,9 @@ namespace WAD64.Managers
             // Убеждаемся, что UIManager единственный
             if (CoreReferences.UIManager != null && CoreReferences.UIManager != this)
             {
-                Debug.LogWarning("[UIManager] Another UIManager already exists! Destroying this one.");
                 Destroy(gameObject);
                 return;
             }
-
-            Debug.Log("[UIManager] Minimal UI initialized");
         }
 
         private void Update()

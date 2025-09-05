@@ -9,6 +9,7 @@ namespace WAD64.Player
     /// - PlayerMovement (движение и прыжки)
     /// - PlayerCamera (FPS камера)
     /// - PlayerHealth (здоровье и урон)
+    /// - WeaponManager (оружие и стрельба)
     /// 
     /// Служит единой точкой доступа к функциональности игрока.
     /// </summary>
@@ -20,7 +21,6 @@ namespace WAD64.Player
     {
         [Header("Player Settings")]
         [SerializeField] private bool enablePlayerOnStart = true;
-        [SerializeField] private bool logPlayerEvents = false;
 
         [Header("Components")]
         [SerializeField] private Transform cameraHolder;
@@ -31,6 +31,7 @@ namespace WAD64.Player
         private PlayerMovement playerMovement;
         private PlayerCamera playerCamera;
         private PlayerHealth playerHealth;
+        private WAD64.Weapons.WeaponManager weaponManager;
 
         // State
         private bool isPlayerEnabled = true;
@@ -48,6 +49,7 @@ namespace WAD64.Player
         public PlayerMovement Movement => playerMovement;
         public PlayerCamera Camera => playerCamera;
         public PlayerHealth Health => playerHealth;
+        public WAD64.Weapons.WeaponManager Weapons => weaponManager;
         public CharacterController Controller => characterController;
         public Transform CameraHolder => cameraHolder;
 
@@ -92,18 +94,60 @@ namespace WAD64.Player
             inputHandler = GetComponent<InputHandler>();
             playerMovement = GetComponent<PlayerMovement>();
             playerHealth = GetComponent<PlayerHealth>();
+            weaponManager = GetComponentInChildren<WAD64.Weapons.WeaponManager>();
 
             // Ищем камеру
             playerCamera = GetComponentInChildren<PlayerCamera>();
-            if (playerCamera == null)
+
+            // Ищем оружие или создаем автоматически
+            if (weaponManager == null)
             {
-                Debug.LogWarning("[PlayerController] PlayerCamera not found in children!");
+                CreateWeaponManager();
             }
 
             // Создаем недостающие holders
             SetupHolders();
 
-            Log("Components initialized");
+        }
+
+        private void CreateWeaponManager()
+        {
+            // Создаем GameObject для WeaponManager
+            GameObject weaponManagerGO = new GameObject("WeaponManager");
+            weaponManagerGO.transform.SetParent(transform);
+            weaponManagerGO.transform.localPosition = Vector3.zero;
+
+            // Добавляем компонент WeaponManager
+            weaponManager = weaponManagerGO.AddComponent<WAD64.Weapons.WeaponManager>();
+
+            // Создаем тестовые оружия
+            CreateTestWeapons();
+
+        }
+
+        private void CreateTestWeapons()
+        {
+            if (weaponManager == null) return;
+
+            // Создаем GameObject для пистолета
+            GameObject pistolGO = new GameObject("Pistol");
+            pistolGO.transform.SetParent(weaponManager.transform);
+            pistolGO.transform.localPosition = Vector3.zero;
+
+            // Добавляем компонент Pistol
+            var pistol = pistolGO.AddComponent<WAD64.Weapons.Pistol>();
+
+            // Создаем GameObject для дробовика
+            GameObject shotgunGO = new GameObject("Shotgun");
+            shotgunGO.transform.SetParent(weaponManager.transform);
+            shotgunGO.transform.localPosition = Vector3.zero;
+
+            // Добавляем компонент Shotgun
+            var shotgun = shotgunGO.AddComponent<WAD64.Weapons.Shotgun>();
+
+            // Настраиваем WeaponManager с обоими оружиями
+            var weapons = new WAD64.Weapons.Weapon[] { pistol, shotgun };
+            weaponManager.InitializeWithWeapons(weapons);
         }
 
         private void SetupHolders()
@@ -161,7 +205,6 @@ namespace WAD64.Player
             isInitialized = true;
             OnPlayerInitialized?.Invoke();
 
-            Log("Player initialization completed");
         }
 
         #endregion
@@ -181,7 +224,6 @@ namespace WAD64.Player
             if (playerCamera != null) playerCamera.enabled = true;
 
             OnPlayerEnabled?.Invoke();
-            Log("Player enabled");
         }
 
         public void DisablePlayer()
@@ -196,7 +238,6 @@ namespace WAD64.Player
             if (playerCamera != null) playerCamera.enabled = false;
 
             OnPlayerDisabled?.Invoke();
-            Log("Player disabled");
         }
 
         private void UpdatePlayerLogic()
@@ -226,14 +267,12 @@ namespace WAD64.Player
 
         private void OnPlayerDied()
         {
-            Log("Player died");
             // Можно добавить специальную логику при смерти
             DisablePlayer();
         }
 
         private void OnPlayerRespawned()
         {
-            Log("Player respawned");
             EnablePlayer();
         }
 
@@ -282,7 +321,6 @@ namespace WAD64.Player
             if (playerMovement != null)
             {
                 // Реализация будет добавлена в PlayerMovement
-                Log($"Force applied: {force}");
             }
         }
 
@@ -324,16 +362,6 @@ namespace WAD64.Player
 
         #endregion
 
-        #region Utility
-
-        private void Log(string message)
-        {
-            if (logPlayerEvents)
-            {
-                Debug.Log($"[PlayerController] {message}");
-            }
-        }
-
         /// <summary>
         /// Получает информацию о состоянии игрока для отладки
         /// </summary>
@@ -348,8 +376,6 @@ namespace WAD64.Player
                    $"- Position: {transform.position}\n" +
                    $"- Velocity: {(playerMovement != null ? playerMovement.Velocity.ToString() : "N/A")}";
         }
-
-        #endregion
 
         private void OnDestroy()
         {
