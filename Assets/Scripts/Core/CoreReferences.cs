@@ -16,8 +16,6 @@ namespace WAD64.Core
 
         // === MANAGERS ===
         public static MonoBehaviour GameManager { get; set; }
-        public static MonoBehaviour AudioManager { get; set; }
-        public static MonoBehaviour PoolManager { get; set; }
         public static MonoBehaviour UIManager { get; set; }
 
         // === CAMERA ===
@@ -35,8 +33,8 @@ namespace WAD64.Core
         public static bool AreEssentialReferencesInitialized()
         {
             return Player != null &&
-                   GameManager != null &&
                    MainCamera != null;
+            // GameManager пока не обязателен для тестирования
         }
 
         /// <summary>
@@ -50,8 +48,6 @@ namespace WAD64.Core
             WeaponManager = null;
 
             GameManager = null;
-            AudioManager = null;
-            PoolManager = null;
             UIManager = null;
 
             MainCamera = null;
