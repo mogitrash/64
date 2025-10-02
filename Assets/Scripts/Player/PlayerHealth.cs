@@ -262,11 +262,7 @@ namespace WAD64.Player
             // Уведомляем GameManager
             if (CoreReferences.GameManager != null)
             {
-                var gameManager = CoreReferences.GameManager as Managers.GameManager;
-                if (gameManager != null)
-                {
-                    gameManager.OnPlayerDeathHandler();
-                }
+                CoreReferences.GameManager.OnPlayerDeathHandler();
             }
 
             if (autoRespawn)
