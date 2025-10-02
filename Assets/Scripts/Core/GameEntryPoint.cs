@@ -1,5 +1,6 @@
 using UnityEngine;
 using WAD64.Core;
+using WAD64.Managers;
 
 namespace WAD64.Core
 {
@@ -80,7 +81,7 @@ namespace WAD64.Core
             if (uiManagerPrefab != null)
             {
                 var uiManagerGO = Instantiate(uiManagerPrefab);
-                CoreReferences.UIManager = uiManagerGO.GetComponent<MonoBehaviour>();
+                CoreReferences.UIManager = uiManagerGO.GetComponent<UIManager>();
                 DontDestroyOnLoad(uiManagerGO);
             }
 
@@ -88,15 +89,14 @@ namespace WAD64.Core
             if (gameManagerPrefab != null)
             {
                 var gameManagerGO = Instantiate(gameManagerPrefab);
-                var gameManager = gameManagerGO.GetComponent<MonoBehaviour>();
+                var gameManager = gameManagerGO.GetComponent<GameManager>();
                 CoreReferences.GameManager = gameManager;
                 DontDestroyOnLoad(gameManagerGO);
 
-                // Инициализируем Game Manager через рефлексию (временное решение)
-                var initMethod = gameManager.GetType().GetMethod("Initialize");
-                if (initMethod != null)
+                // Инициализируем Game Manager
+                if (gameManager != null)
                 {
-                    initMethod.Invoke(gameManager, null);
+                    gameManager.Initialize();
                 }
             }
 

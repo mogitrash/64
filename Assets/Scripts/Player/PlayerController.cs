@@ -281,14 +281,10 @@ namespace WAD64.Player
             // Передаем событие паузы в GameManager
             if (CoreReferences.GameManager != null)
             {
-                var gameManager = CoreReferences.GameManager as Managers.GameManager;
-                if (gameManager != null)
-                {
-                    if (gameManager.IsPaused)
-                        gameManager.ResumeGame();
-                    else
-                        gameManager.PauseGame();
-                }
+                if (CoreReferences.GameManager.IsPaused)
+                    CoreReferences.GameManager.ResumeGame();
+                else
+                    CoreReferences.GameManager.PauseGame();
             }
         }
 
