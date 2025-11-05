@@ -14,6 +14,7 @@ namespace WAD64.UI
         [Header("UI References")]
         [SerializeField] private HealthBar healthBar;
         [SerializeField] private ArmorBar armorBar;
+        [SerializeField] private Crosshair crosshair;
 
         private void Start()
         {
@@ -33,6 +34,11 @@ namespace WAD64.UI
                 armorBar = FindFirstObjectByType<ArmorBar>();
             }
 
+            if (crosshair == null)
+            {
+                crosshair = FindFirstObjectByType<Crosshair>();
+            }
+
             // Настраиваем HealthBar
             if (healthBar != null)
             {
@@ -43,6 +49,12 @@ namespace WAD64.UI
             if (armorBar != null)
             {
                 SetupArmorBar();
+            }
+
+            // Настраиваем Crosshair
+            if (crosshair != null)
+            {
+                SetupCrosshair();
             }
         }
 
@@ -69,6 +81,13 @@ namespace WAD64.UI
                 armorBar.SetupUI(armorImage);
                 // Позиция и размер настраиваются вручную в Unity Editor
             }
+        }
+
+        private void SetupCrosshair()
+        {
+            // Crosshair настраивается автоматически в Awake/Start
+            // Здесь можно добавить дополнительную настройку если потребуется
+            crosshair.RefreshCrosshair();
         }
 
         /// <summary>
