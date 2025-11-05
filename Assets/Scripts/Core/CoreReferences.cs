@@ -1,4 +1,5 @@
 using UnityEngine;
+using WAD64.Managers;
 
 namespace WAD64.Core
 {
@@ -15,8 +16,8 @@ namespace WAD64.Core
         public static MonoBehaviour WeaponManager { get; set; }
 
         // === MANAGERS ===
-        public static MonoBehaviour GameManager { get; set; }
-        public static MonoBehaviour UIManager { get; set; }
+        public static GameManager GameManager { get; set; }
+        public static UIManager UIManager { get; set; }
 
         // === CAMERA ===
         public static Camera MainCamera { get; set; }
