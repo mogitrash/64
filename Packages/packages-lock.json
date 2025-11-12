@@ -10,13 +10,13 @@
       "hash": "38fecf55e4fd94ccfe58a92ed8ad1a529ba1694e"
     },
     "com.coplaydev.unity-mcp": {
-      "version": "https://github.com/CoplayDev/unity-mcp.git?path=/UnityMcpBridge",
+      "version": "https://github.com/CoplayDev/unity-mcp.git?path=/MCPForUnity",
       "depth": 0,
       "source": "git",
       "dependencies": {
         "com.unity.nuget.newtonsoft-json": "3.0.2"
       },
-      "hash": "b7411e2cdee6d4478e1754ea042586c6b5911a8b"
+      "hash": "14b11ba073304b3aee5978dde4ac8ad32973de60"
     },
     "com.unity.ai.navigation": {
       "version": "2.0.5",
