@@ -138,11 +138,10 @@ namespace WAD64.Enemies
 
             if (distance <= waypointReachDistance)
             {
-
                 MoveToNextWaypoint();
 
-
-                if (waypoints != null && waypoints.Length > 0 && currentWaypointIndex < waypoints.Length)
+                // Only move to next waypoint if we haven't stopped (i.e., loopPatrol is true or we haven't reached the end)
+                if (hasTarget && waypoints != null && waypoints.Length > 0 && currentWaypointIndex < waypoints.Length)
                 {
                     Transform nextWaypoint = waypoints[currentWaypointIndex];
                     if (nextWaypoint != null)
