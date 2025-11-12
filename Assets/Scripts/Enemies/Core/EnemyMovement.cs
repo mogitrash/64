@@ -95,13 +95,8 @@ namespace WAD64.Enemies
             Vector3 direction = (target - transform.position);
             direction.y = 0f; // Игнорируем вертикальную составляющую
 
-            float distance = direction.magnitude;
-
-            if (distance < waypointReachDistance)
-            {
-                Stop();
-                return;
-            }
+            // НЕ проверяем достижение цели здесь - это создает конфликт с Patrol()
+            // Patrol() сам контролирует переключение waypoints
 
             // Проверка препятствий
             if (enableObstacleAvoidance)
@@ -140,10 +135,21 @@ namespace WAD64.Enemies
 
             float distance = Vector3.Distance(transform.position, currentWaypoint.position);
 
-            if (distance < waypointReachDistance)
+
+            if (distance <= waypointReachDistance)
             {
-                // Достигли waypoint, переходим к следующему
+
                 MoveToNextWaypoint();
+
+
+                if (waypoints != null && waypoints.Length > 0 && currentWaypointIndex < waypoints.Length)
+                {
+                    Transform nextWaypoint = waypoints[currentWaypointIndex];
+                    if (nextWaypoint != null)
+                    {
+                        MoveTo(nextWaypoint.position);
+                    }
+                }
             }
             else
             {
@@ -158,7 +164,7 @@ namespace WAD64.Enemies
         public void Stop()
         {
             hasTarget = false;
-            currentVelocity = Vector3.Lerp(currentVelocity, Vector3.zero, acceleration * Time.deltaTime);
+            currentVelocity = Vector3.zero;
         }
 
         /// <summary>

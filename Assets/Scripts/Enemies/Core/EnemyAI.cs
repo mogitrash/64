@@ -99,14 +99,19 @@ namespace WAD64.Enemies
 
       float distance = Vector3.Distance(transform.position, playerTransform.position);
 
-      // Обнаружение через OverlapSphere
-      Collider[] hits = Physics.OverlapSphere(transform.position, detectionRadius, playerLayer);
-      playerDetected = hits.Length > 0;
-
-      // Если игрок слишком далеко, теряем агро
-      if (currentState == EnemyState.Aggro && distance > aggroLoseDistance)
+      // Используем гистерезис: разные пороги для входа и выхода из состояния Aggro
+      if (currentState == EnemyState.Patrol)
       {
-        playerDetected = false;
+        // В Patrol: используем detectionRadius для обнаружения (вход в Aggro)
+        // Проверяем и через OverlapSphere, и по расстоянию для надежности
+        Collider[] hits = Physics.OverlapSphere(transform.position, detectionRadius, playerLayer);
+        playerDetected = hits.Length > 0 && distance <= detectionRadius;
+      }
+      else if (currentState == EnemyState.Aggro || currentState == EnemyState.Attack)
+      {
+        // В Aggro/Attack: используем aggroLoseDistance для потери агро (выход из Aggro)
+        // Игрок считается обнаруженным, если он ближе aggroLoseDistance
+        playerDetected = distance <= aggroLoseDistance;
       }
     }
 
@@ -131,11 +136,17 @@ namespace WAD64.Enemies
 
     private void UpdatePatrol()
     {
-      // Если игрок обнаружен, переходим в состояние Aggro
-      if (playerDetected)
+      // Проверяем расстояние напрямую для более стабильной работы
+      // Используем detectionRadius для входа в Aggro
+      if (playerTransform != null)
       {
-        SetState(EnemyState.Aggro);
-        return;
+        float distance = DistanceToPlayer;
+        // Дополнительная проверка: игрок должен быть в радиусе обнаружения
+        if (playerDetected && distance <= detectionRadius)
+        {
+          SetState(EnemyState.Aggro);
+          return;
+        }
       }
 
       // Продолжаем патрулирование
@@ -155,8 +166,9 @@ namespace WAD64.Enemies
 
       float distance = DistanceToPlayer;
 
-      // Если игрок слишком далеко, возвращаемся к патрулированию
-      if (!playerDetected || distance > aggroLoseDistance)
+      // Если игрок слишком далеко (используем aggroLoseDistance с небольшим запасом для стабильности)
+      // Проверяем расстояние напрямую, чтобы избежать рассинхронизации с playerDetected
+      if (distance > aggroLoseDistance)
       {
         SetState(EnemyState.Patrol);
         return;
@@ -234,15 +246,18 @@ namespace WAD64.Enemies
       if (currentState == newState) return;
 
       EnemyState oldState = currentState;
-      currentState = newState;
-
-      OnStateChanged?.Invoke(newState);
 
       // Выход из старого состояния
       ExitState(oldState);
 
+      // Обновляем состояние
+      currentState = newState;
+
       // Вход в новое состояние
       EnterState(newState);
+
+      // Уведомляем слушателей после полного завершения перехода
+      OnStateChanged?.Invoke(newState);
     }
 
     private void EnterState(EnemyState state)
