@@ -1,6 +1,8 @@
 using UnityEngine;
 using WAD64.Core;
 using WAD64.Managers;
+using WAD64.Weapons;
+using WAD64.Player;
 
 namespace WAD64.Core
 {
@@ -30,9 +32,52 @@ namespace WAD64.Core
 
         private void Awake()
         {
+            // Автоматическая настройка ссылок в сцене
+            AutoSetupSceneReferences();
+
             if (initializeOnAwake)
             {
                 InitializeGame();
+            }
+        }
+
+        /// <summary>
+        /// Автоматически настраивает ссылки в сцене после рефакторинга
+        /// </summary>
+        private void AutoSetupSceneReferences()
+        {
+            // Настройка WeaponManager - назначаем инстансы оружия из сцены
+            var weaponManager = FindFirstObjectByType<WeaponManager>();
+            if (weaponManager != null)
+            {
+                var weapons = weaponManager.GetComponentsInChildren<Weapon>();
+                if (weapons != null && weapons.Length > 0)
+                {
+                    var field = typeof(WeaponManager).GetField("availableWeapons",
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    if (field != null)
+                    {
+                        field.SetValue(weaponManager, weapons);
+                        Debug.Log($"GameEntryPoint: WeaponManager - назначено {weapons.Length} оружий из сцены.");
+                    }
+                }
+            }
+
+            // Настройка PlayerMovement - GroundCheck
+            var playerMovement = FindFirstObjectByType<PlayerMovement>();
+            if (playerMovement != null)
+            {
+                var groundCheck = playerMovement.transform.Find("GroundCheck");
+                if (groundCheck != null)
+                {
+                    var field = typeof(PlayerMovement).GetField("groundCheck",
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    if (field != null)
+                    {
+                        field.SetValue(playerMovement, groundCheck);
+                        Debug.Log("GameEntryPoint: PlayerMovement - GroundCheck назначен.");
+                    }
+                }
             }
         }
 
@@ -75,29 +120,31 @@ namespace WAD64.Core
 
         private void InitializeManagers()
         {
-
-
-            // UI Manager
-            if (uiManagerPrefab != null)
+            // UI Manager - ищем в сцене
+            var existingUIManager = FindFirstObjectByType<UIManager>();
+            if (existingUIManager != null)
             {
-                var uiManagerGO = Instantiate(uiManagerPrefab);
-                CoreReferences.UIManager = uiManagerGO.GetComponent<UIManager>();
-                DontDestroyOnLoad(uiManagerGO);
+                CoreReferences.UIManager = existingUIManager;
+                Debug.Log("UIManager найден в сцене, используется существующий.");
+            }
+            else
+            {
+                Debug.LogWarning("UIManager не найден в сцене! Добавьте UIManager в сцену.");
             }
 
-            // Game Manager (последний, так как может зависеть от других)
-            if (gameManagerPrefab != null)
+            // Game Manager (последний, так как может зависеть от других) - ищем в сцене
+            var existingGameManager = FindFirstObjectByType<GameManager>();
+            if (existingGameManager != null)
             {
-                var gameManagerGO = Instantiate(gameManagerPrefab);
-                var gameManager = gameManagerGO.GetComponent<GameManager>();
-                CoreReferences.GameManager = gameManager;
-                DontDestroyOnLoad(gameManagerGO);
-
+                CoreReferences.GameManager = existingGameManager;
+                Debug.Log("GameManager найден в сцене, используется существующий.");
+                
                 // Инициализируем Game Manager
-                if (gameManager != null)
-                {
-                    gameManager.Initialize();
-                }
+                existingGameManager.Initialize();
+            }
+            else
+            {
+                Debug.LogWarning("GameManager не найден в сцене! Добавьте GameManager в сцену.");
             }
 
         }

@@ -91,13 +91,10 @@ namespace WAD64.Player
             // Поскольку gravity уже отрицательное, используем Mathf.Abs
             jumpVelocity = Mathf.Sqrt(jumpHeight * 2f * Mathf.Abs(gravity));
 
-            // Создаем точку проверки земли, если её нет
+            // Валидация: проверяем наличие GroundCheck на сцене
             if (groundCheck == null)
             {
-                GameObject groundCheckGO = new GameObject("GroundCheck");
-                groundCheckGO.transform.SetParent(transform);
-                groundCheckGO.transform.localPosition = new Vector3(0, -controller.height * 0.5f, 0);
-                groundCheck = groundCheckGO.transform;
+                Debug.LogWarning($"{gameObject.name}: GroundCheck не назначен! Создайте Transform для проверки земли и назначьте в Inspector.");
             }
         }
 

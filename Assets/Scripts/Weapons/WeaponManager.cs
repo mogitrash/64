@@ -36,6 +36,12 @@ namespace WAD64.Weapons
         {
             inputHandler = GetComponentInParent<InputHandler>();
 
+            // Валидация: проверяем наличие оружия на сцене
+            if (availableWeapons == null || availableWeapons.Length == 0)
+            {
+                Debug.LogWarning($"{gameObject.name}: availableWeapons пуст! Добавьте оружие в сцену и назначьте в Inspector.");
+            }
+
             InitializeWeapons();
         }
 
@@ -64,40 +70,36 @@ namespace WAD64.Weapons
                 return;
             }
 
-            // Инстанцируем префабы оружий
+            // Работаем только с инстансами, которые уже есть в сцене
             instantiatedWeapons = new Weapon[availableWeapons.Length];
 
             for (int i = 0; i < availableWeapons.Length; i++)
             {
-                if (availableWeapons[i] != null)
+                if (availableWeapons[i] == null)
                 {
-                    // Проверяем, является ли это префабом или уже инстансом
-                    GameObject weaponPrefab = availableWeapons[i].gameObject;
-                    bool isPrefab = weaponPrefab.scene.name == null; // Префабы не имеют сцены
+                    Debug.LogWarning($"{gameObject.name}: availableWeapons[{i}] не назначен!");
+                    continue;
+                }
 
-                    if (isPrefab)
-                    {
-                        // Инстанцируем префаб как дочерний объект
-                        GameObject weaponInstance = Instantiate(weaponPrefab, transform);
-                        weaponInstance.name = weaponPrefab.name; // Убираем "(Clone)" из имени
-                        instantiatedWeapons[i] = weaponInstance.GetComponent<Weapon>();
-                    }
-                    else
-                    {
-                        // Уже инстанс в сцене, используем его напрямую
-                        instantiatedWeapons[i] = availableWeapons[i];
-                    }
+                // Проверяем, что это инстанс в сцене, а не префаб
+                if (availableWeapons[i].gameObject.scene.name == null)
+                {
+                    Debug.LogError($"{gameObject.name}: availableWeapons[{i}] является префабом! Используйте инстансы из сцены. Добавьте оружие в сцену и назначьте в Inspector.");
+                    continue;
+                }
 
-                    if (instantiatedWeapons[i] != null)
-                    {
-                        // Деактивируем оружие
-                        instantiatedWeapons[i].gameObject.SetActive(false);
+                // Используем инстанс из сцены напрямую
+                instantiatedWeapons[i] = availableWeapons[i];
 
-                        // Подписываемся на события оружия
-                        instantiatedWeapons[i].OnWeaponFired += OnCurrentWeaponFired;
-                        instantiatedWeapons[i].OnReloadCompleted += OnCurrentWeaponReloaded;
-                        instantiatedWeapons[i].OnEmptyClip += OnCurrentWeaponEmpty;
-                    }
+                if (instantiatedWeapons[i] != null)
+                {
+                    // Деактивируем оружие
+                    instantiatedWeapons[i].gameObject.SetActive(false);
+
+                    // Подписываемся на события оружия
+                    instantiatedWeapons[i].OnWeaponFired += OnCurrentWeaponFired;
+                    instantiatedWeapons[i].OnReloadCompleted += OnCurrentWeaponReloaded;
+                    instantiatedWeapons[i].OnEmptyClip += OnCurrentWeaponEmpty;
                 }
             }
         }
