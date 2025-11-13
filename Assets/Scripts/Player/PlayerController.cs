@@ -120,34 +120,7 @@ namespace WAD64.Player
             // Добавляем компонент WeaponManager
             weaponManager = weaponManagerGO.AddComponent<WAD64.Weapons.WeaponManager>();
 
-            // Создаем тестовые оружия
-            CreateTestWeapons();
-
-        }
-
-        private void CreateTestWeapons()
-        {
-            if (weaponManager == null) return;
-
-            // Создаем GameObject для пистолета
-            GameObject pistolGO = new GameObject("Pistol");
-            pistolGO.transform.SetParent(weaponManager.transform);
-            pistolGO.transform.localPosition = Vector3.zero;
-
-            // Добавляем компонент Pistol
-            var pistol = pistolGO.AddComponent<WAD64.Weapons.Pistol>();
-
-            // Создаем GameObject для дробовика
-            GameObject shotgunGO = new GameObject("Shotgun");
-            shotgunGO.transform.SetParent(weaponManager.transform);
-            shotgunGO.transform.localPosition = Vector3.zero;
-
-            // Добавляем компонент Shotgun
-            var shotgun = shotgunGO.AddComponent<WAD64.Weapons.Shotgun>();
-
-            // Настраиваем WeaponManager с обоими оружиями
-            var weapons = new WAD64.Weapons.Weapon[] { pistol, shotgun };
-            weaponManager.InitializeWithWeapons(weapons);
+            // Оружия должны быть настроены через префабы в Inspector или в сцене
         }
 
         private void SetupHolders()

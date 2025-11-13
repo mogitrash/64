@@ -50,6 +50,48 @@
   - `transitionSpeed` - скорость анимации заполнения
   - `fadeSpeed` - скорость появления/исчезновения через alpha
 
+### Crosshair
+- **Назначение**: Отображение прицела (крестика) по центру экрана
+- **Ответственность**:
+  - Автоматическое создание 4 линий (верх, низ, лево, право)
+  - Скрытие при паузе/GameOver через подписку на GameManager
+  - Плавное появление/исчезновение через CanvasGroup.alpha
+- **Настройки**:
+  - `topLine`, `bottomLine`, `leftLine`, `rightLine` - ссылки на Image компоненты (создаются автоматически)
+  - `canvasGroup` - ссылка на CanvasGroup компонент (создается автоматически если отсутствует)
+  - `lineLength` - длина линий прицела
+  - `lineWidth` - ширина линий прицела
+  - `lineGap` - расстояние от центра до линий
+  - `crosshairColor` - цвет прицела
+  - `fadeSpeed` - скорость появления/исчезновения
+
+### WeaponSpriteDisplay
+- **Назначение**: Отображение и анимация спрайтов оружия в стиле DOOM
+- **Ответственность**:
+  - Подписка на события `WeaponManager` (смена оружия, стрельба, перезарядка)
+  - Анимация спрайтов оружия (idle, fire, reload)
+  - Автоматическое переключение спрайтов при смене оружия
+  - Отображение спрайта пустой обоймы
+- **Настройки**:
+  - `weaponImage` - ссылка на Image компонент (находится автоматически если не назначена)
+  - `weaponSpriteData` - массив ScriptableObject'ов с данными спрайтов для каждого оружия
+  - `playIdleAnimation` - включить ли idle анимацию (циклическая)
+  - `playFireAnimation` - включить ли анимацию выстрела (один раз)
+  - `playReloadAnimation` - включить ли анимацию перезарядки (один раз)
+- **Интеграция**: Автоматически подписывается на `WeaponManager.OnWeaponChanged`, `OnWeaponFired`, `OnWeaponReloaded`
+
+### WeaponSpriteData (ScriptableObject)
+- **Назначение**: Хранит данные анимации спрайтов для конкретного оружия
+- **Создание**: `Assets → Create → WAD64 → Weapon Sprite Data`
+- **Настройки**:
+  - `weaponName` - название оружия (должно совпадать с `Weapon.WeaponName`)
+  - `idleSprites` - массив спрайтов для idle анимации (циклическая)
+  - `idleAnimationSpeed` - скорость idle анимации (кадров в секунду)
+  - `fireSprites` - массив спрайтов для анимации выстрела (проигрывается один раз)
+  - `fireAnimationSpeed` - скорость анимации выстрела (кадров в секунду)
+  - `reloadSprites` - массив спрайтов для анимации перезарядки (проигрывается один раз, **синхронизируется с реальным временем перезарядки оружия**)
+  - `emptySprite` - спрайт для пустой обоймы (опционально)
+
 ## Принципы работы
 
 1. **Инициализация**:
@@ -66,6 +108,8 @@
 3. **Визуальные особенности**:
    - **HealthBar**: меняет цвет от зеленого через желтый к красному
    - **ArmorBar**: плавно исчезает когда броня заканчивается
+   - **Crosshair**: автоматически создается и центрируется, скрывается при паузе
+   - **WeaponSpriteDisplay**: анимирует спрайты оружия в стиле DOOM, реагирует на события стрельбы
    - Оба бара поддерживают плавную анимацию изменений
 
 4. **Архитектура**:
@@ -75,8 +119,8 @@
    - Компоненты автоматически находят нужные ссылки в `Awake()` если они не назначены в инспекторе
 
 ## Зависимости
-- **Исходящие**: Player (PlayerHealth)
-- **Входящие**: Core (CoreReferences)
+- **Исходящие**: Player (PlayerHealth), Weapons (WeaponManager)
+- **Входящие**: Core (CoreReferences), Managers (GameManager)
 - **Unity компоненты**: UnityEngine.UI (Image, CanvasGroup)
 
 ## Интеграция в сцену
@@ -85,10 +129,18 @@
 ```
 Canvas
 ├── HealthBar (GameObject с компонентами: HealthBar, Image)
-└── ArmorBar (GameObject с компонентами: ArmorBar, Image, CanvasGroup)
+├── ArmorBar (GameObject с компонентами: ArmorBar, Image, CanvasGroup)
+├── Crosshair (GameObject с компонентами: Crosshair, CanvasGroup)
+│   ├── TopLine (Image)
+│   ├── BottomLine (Image)
+│   ├── LeftLine (Image)
+│   └── RightLine (Image)
+└── WeaponSpriteDisplay (GameObject с компонентами: WeaponSpriteDisplay, Image)
 ```
 
-**Примечание**: Image компонент находится прямо на GameObject HealthBar/ArmorBar, дочерние объекты не требуются.
+**Примечание**: 
+- Image компонент находится прямо на GameObject HealthBar/ArmorBar/WeaponSpriteDisplay, дочерние объекты не требуются
+- Crosshair автоматически создает дочерние Image компоненты для линий прицела
 
 ### Настройка компонентов:
 
@@ -105,15 +157,31 @@ Canvas
    - Компонент `CanvasGroup` добавится автоматически если отсутствует (через `Awake()` или `SetupUI()`)
    - **Позицию и размер настраивайте вручную в Unity Editor через RectTransform**
 
-3. **Настройка позиции и размера в Unity Editor**:
-   - Выберите GameObject с HealthBar/ArmorBar
+3. **Crosshair**:
+   - Добавить компонент `Crosshair` на GameObject с `CanvasGroup` в Canvas
+   - Crosshair автоматически создаст дочерние Image компоненты для линий прицела
+   - UIInitializer автоматически настроит компонент
+   - **Позицию и размер настраивайте вручную в Unity Editor через RectTransform**
+
+4. **WeaponSpriteDisplay**:
+   - Создайте ScriptableObject для каждого оружия: `Assets → Create → WAD64 → Weapon Sprite Data`
+   - Назовите их соответственно (например, `PistolSprites`, `ShotgunSprites`)
+   - Заполните массивы спрайтов (idle, fire, reload) и настройте скорости анимации
+   - Убедитесь, что `weaponName` в ScriptableObject совпадает с `WeaponName` в скрипте оружия
+   - Добавьте компонент `WeaponSpriteDisplay` на GameObject с `Image` в Canvas
+   - Перетащите созданные ScriptableObject'ы в массив `Weapon Sprite Data`
+   - UIInitializer автоматически настроит `Image Type` = `Simple` и `Preserve Aspect` = `true`
+   - **Позицию и размер настраивайте вручную в Unity Editor через RectTransform** (как для других UI элементов)
+
+5. **Настройка позиции и размера в Unity Editor**:
+   - Выберите GameObject с HealthBar/ArmorBar/WeaponSpriteDisplay
    - В компоненте **RectTransform** настройте:
      - **Position**: позицию элемента
      - **Size**: размер элемента  
      - **Anchor**: привязку к краям экрана
      - **Pivot**: точку поворота/масштабирования
 
-4. **Ручная настройка** (альтернатива UIInitializer):
+6. **Ручная настройка** (альтернатива UIInitializer):
    ```csharp
    // Для HealthBar
    healthBar.SetupUI(healthImage);
@@ -122,6 +190,10 @@ Canvas
    // Для ArmorBar  
    armorBar.SetupUI(armorImage);
    armorBar.SetPlayerHealth(playerHealth); // Для тестирования или ручной настройки
+   
+   // Для WeaponSpriteDisplay
+   weaponSpriteDisplay.SetupUI(weaponImage);
+   weaponSpriteDisplay.SetWeaponSpriteData(spriteDataArray); // Установить данные спрайтов
    ```
 
 ## Примечания

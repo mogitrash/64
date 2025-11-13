@@ -6,7 +6,7 @@ namespace WAD64.Weapons
     /// Базовый класс для всех видов оружия в игре.
     /// Определяет основные механики стрельбы, перезарядки и управления боеприпасами.
     /// </summary>
-    public abstract class Weapon : MonoBehaviour
+    public class Weapon : MonoBehaviour
     {
         [Header("Weapon Stats")]
         [SerializeField] protected string weaponName = "Base Weapon";
@@ -23,11 +23,24 @@ namespace WAD64.Weapons
         [SerializeField] protected float spread = 0.02f; // разброс в радианах
         [SerializeField] protected LayerMask hitLayers = ~0;
 
+        [Header("Shotgun Settings")]
+        [SerializeField] protected int pelletCount = 1; // Количество дробин (1 = обычный выстрел, >1 = дробовик)
+        [SerializeField] protected float pelletSpread = 0.15f; // Разброс дробин в радианах
+
         [Header("Effects")]
         [SerializeField] protected ParticleSystem muzzleFlash;
         [SerializeField] protected AudioClip fireSound;
         [SerializeField] protected AudioClip reloadSound;
         [SerializeField] protected AudioClip emptySound;
+
+        [Header("Debug Visualization")]
+        [SerializeField] protected bool showHitMarkers = true;
+        [SerializeField] protected Color hitMarkerColor = Color.red;
+        [SerializeField] protected float hitMarkerSize = 0.1f;
+        [SerializeField] protected float hitMarkerDuration = 2f;
+        [SerializeField] protected bool showTrajectories = true;
+        [SerializeField] protected Color trajectoryColor = Color.yellow;
+        [SerializeField] protected float trajectoryDuration = 0.5f;
 
         // State
         protected bool isReloading = false;
@@ -151,8 +164,163 @@ namespace WAD64.Weapons
 
         /// <summary>
         /// Выполняет конкретную логику выстрела (переопределяется в наследниках)
+        /// Базовая реализация - hitscan выстрел с нанесением урона
+        /// Поддерживает как обычные выстрелы, так и дробовик (множественные дробинки)
         /// </summary>
-        protected abstract void PerformShot(Vector3 direction);
+        protected virtual void PerformShot(Vector3 direction)
+        {
+            if (playerCamera == null) return;
+
+            Vector3 origin = playerCamera.transform.position;
+
+            // Если это дробовик (pelletCount > 1), стреляем несколькими дробинками
+            if (pelletCount > 1)
+            {
+                PerformShotgunShot(origin, direction);
+            }
+            else
+            {
+                // Обычный одиночный выстрел
+                PerformSingleShot(origin, direction);
+            }
+        }
+
+        /// <summary>
+        /// Выполняет одиночный выстрел
+        /// </summary>
+        protected virtual void PerformSingleShot(Vector3 origin, Vector3 direction)
+        {
+            RaycastHit hit;
+
+            if (Physics.Raycast(origin, direction, out hit, range, hitLayers))
+            {
+                // Визуализация траектории
+                if (showTrajectories)
+                {
+                    Debug.DrawRay(origin, direction * hit.distance, trajectoryColor, trajectoryDuration);
+                }
+
+                // Визуализация точки попадания
+                if (showHitMarkers)
+                {
+                    CreateHitMarker(hit.point, hit.normal);
+                }
+
+                // Пытаемся нанести урон через IDamageable
+                IDamageable damageable = hit.collider.GetComponent<IDamageable>();
+                if (damageable != null)
+                {
+                    damageable.TakeDamage(damage);
+                }
+            }
+            else
+            {
+                // Визуализация промаха (линия до максимальной дальности)
+                if (showTrajectories)
+                {
+                    Debug.DrawRay(origin, direction * range, Color.gray, trajectoryDuration);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Выполняет выстрел дробовика (множественные дробинки)
+        /// </summary>
+        protected virtual void PerformShotgunShot(Vector3 origin, Vector3 direction)
+        {
+            // Стреляем несколькими дробинками с разбросом
+            for (int i = 0; i < pelletCount; i++)
+            {
+                // Рассчитываем направление для каждой дроби с разбросом
+                Vector3 pelletDirection = CalculatePelletDirection(direction);
+
+                RaycastHit hit;
+                if (Physics.Raycast(origin, pelletDirection, out hit, range, hitLayers))
+                {
+                    // Визуализация траектории каждой дроби
+                    if (showTrajectories)
+                    {
+                        Debug.DrawRay(origin, pelletDirection * hit.distance, trajectoryColor, trajectoryDuration);
+                    }
+
+                    // Визуализация точки попадания
+                    if (showHitMarkers)
+                    {
+                        CreateHitMarker(hit.point, hit.normal);
+                    }
+
+                    // Пытаемся нанести урон через IDamageable
+                    IDamageable damageable = hit.collider.GetComponent<IDamageable>();
+                    if (damageable != null)
+                    {
+                        // Каждая дробинка наносит полный урон (можно изменить на damage / pelletCount)
+                        damageable.TakeDamage(damage);
+                    }
+                }
+                else
+                {
+                    // Визуализация промаха дроби
+                    if (showTrajectories)
+                    {
+                        Debug.DrawRay(origin, pelletDirection * range, Color.gray, trajectoryDuration);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Рассчитывает направление для одной дроби с учетом разброса
+        /// Использует простой метод со случайными смещениями по X и Y
+        /// </summary>
+        protected virtual Vector3 CalculatePelletDirection(Vector3 baseDirection)
+        {
+            if (playerCamera == null)
+                return baseDirection;
+
+            // Добавляем случайный разброс специально для дроби
+            // Используем простой метод: случайные смещения по осям камеры
+            float randomX = Random.Range(-pelletSpread, pelletSpread);
+            float randomY = Random.Range(-pelletSpread, pelletSpread);
+
+            Vector3 spreadOffset = playerCamera.transform.right * randomX +
+                                 playerCamera.transform.up * randomY;
+
+            return (baseDirection + spreadOffset).normalized;
+        }
+
+        /// <summary>
+        /// Создает временный маркер попадания для визуализации
+        /// </summary>
+        protected virtual void CreateHitMarker(Vector3 position, Vector3 normal)
+        {
+            // Создаем временный GameObject со сферой
+            GameObject marker = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            marker.name = "HitMarker";
+            marker.transform.position = position;
+            marker.transform.localScale = Vector3.one * hitMarkerSize;
+
+            // Удаляем коллайдер, чтобы не мешал
+            Collider collider = marker.GetComponent<Collider>();
+            if (collider != null)
+            {
+                Destroy(collider);
+            }
+
+            // Настраиваем материал
+            Renderer renderer = marker.GetComponent<Renderer>();
+            if (renderer != null)
+            {
+                Material mat = new Material(Shader.Find("Standard"));
+                mat.color = hitMarkerColor;
+                mat.SetFloat("_Metallic", 0f);
+                mat.SetFloat("_Glossiness", 0.3f);
+                renderer.material = mat;
+            }
+
+            // Добавляем компонент для автоматического удаления с плавным исчезновением
+            AutoDestroyMarker autoDestroy = marker.AddComponent<AutoDestroyMarker>();
+            autoDestroy.duration = hitMarkerDuration;
+        }
 
         /// <summary>
         /// Начинает перезарядку
@@ -247,5 +415,47 @@ namespace WAD64.Weapons
         }
 
         #endregion
+    }
+
+    /// <summary>
+    /// Компонент для автоматического удаления маркеров попадания с плавным исчезновением
+    /// </summary>
+    public class AutoDestroyMarker : MonoBehaviour
+    {
+        public float duration = 1f;
+        private float timer;
+        private Vector3 initialScale;
+
+        private void Start()
+        {
+            timer = duration;
+            initialScale = transform.localScale;
+        }
+
+        private void Update()
+        {
+            timer -= Time.deltaTime;
+
+            // Плавное исчезновение в последние 0.2 секунды
+            if (timer <= 0.2f && timer > 0f)
+            {
+                float alpha = timer / 0.2f;
+                Renderer renderer = GetComponent<Renderer>();
+                if (renderer != null && renderer.material != null)
+                {
+                    Color color = renderer.material.color;
+                    color.a = alpha;
+                    renderer.material.color = color;
+                }
+
+                // Уменьшаем размер
+                transform.localScale = initialScale * alpha;
+            }
+
+            if (timer <= 0f)
+            {
+                Destroy(gameObject);
+            }
+        }
     }
 }

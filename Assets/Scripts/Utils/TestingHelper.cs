@@ -226,23 +226,6 @@ namespace WAD64.Utils
             GUILayout.Label($"Range: {weapon.Range}m", labelStyle);
             GUILayout.Label($"Can Fire: {weapon.CanFire}", labelStyle);
             GUILayout.Label($"Reloading: {weapon.IsReloading} ({weapon.ReloadProgress:P0})", labelStyle);
-
-            // Информация о последнем выстреле
-            var pistol = weapon as WAD64.Weapons.Pistol;
-            var shotgun = weapon as WAD64.Weapons.Shotgun;
-
-            if (pistol != null && pistol.HasRecentShot())
-            {
-                var shotInfo = pistol.GetLastShotInfo();
-                GUILayout.Label($"Last Shot: {(shotInfo.hit ? "HIT" : "MISS")}", labelStyle);
-                GUILayout.Label($"Distance: {Vector3.Distance(shotInfo.origin, shotInfo.hitPoint):F1}m", labelStyle);
-            }
-            else if (shotgun != null && shotgun.HasRecentShot())
-            {
-                var shotInfo = shotgun.GetLastShotInfo();
-                GUILayout.Label($"Last Shot: {shotInfo.totalHits}/8 pellets hit", labelStyle);
-                GUILayout.Label($"Hit Rate: {(shotInfo.totalHits / 8f):P0}", labelStyle);
-            }
         }
 
         #region Test Functions
