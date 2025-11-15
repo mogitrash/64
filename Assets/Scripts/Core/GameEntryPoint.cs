@@ -138,7 +138,7 @@ namespace WAD64.Core
             {
                 CoreReferences.GameManager = existingGameManager;
                 Debug.Log("GameManager найден в сцене, используется существующий.");
-                
+
                 // Инициализируем Game Manager
                 existingGameManager.Initialize();
             }
@@ -195,6 +195,9 @@ namespace WAD64.Core
             CoreReferences.PlayerMovement = playerGO.GetComponent<WAD64.Player.PlayerMovement>();
             CoreReferences.PlayerHealth = playerGO.GetComponent<WAD64.Player.PlayerHealth>();
             CoreReferences.PlayerCamera = playerGO.GetComponentInChildren<WAD64.Player.PlayerCamera>();
+
+            // Регистрируем WeaponManager (важно для UI компонентов, которые могут обращаться к нему в Start())
+            CoreReferences.WeaponManager = playerGO.GetComponentInChildren<WAD64.Weapons.WeaponManager>();
 
             // Регистрируем главную камеру
             Camera playerCamera = playerGO.GetComponentInChildren<Camera>();
