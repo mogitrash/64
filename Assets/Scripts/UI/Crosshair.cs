@@ -106,47 +106,27 @@ namespace WAD64.UI
                 }
             }
 
-            // Создаем недостающие линии
-            if (topLine == null)
-            {
-                topLine = CreateLineImage("TopLine");
-            }
-
-            if (bottomLine == null)
-            {
-                bottomLine = CreateLineImage("BottomLine");
-            }
-
-            if (leftLine == null)
-            {
-                leftLine = CreateLineImage("LeftLine");
-            }
-
-            if (rightLine == null)
-            {
-                rightLine = CreateLineImage("RightLine");
-            }
-
-            // Настраиваем линии
-            SetupLines();
-        }
-
-        private Image CreateLineImage(string name)
-        {
-            GameObject lineObj = new GameObject(name);
-            lineObj.transform.SetParent(transform, false);
+            // Валидация: проверяем наличие всех линий на сцене
+            bool hasAllLines = topLine != null && bottomLine != null && leftLine != null && rightLine != null;
             
-            Image image = lineObj.AddComponent<Image>();
-            image.color = crosshairColor;
+            if (!hasAllLines)
+            {
+                string missingLines = "";
+                if (topLine == null) missingLines += "TopLine ";
+                if (bottomLine == null) missingLines += "BottomLine ";
+                if (leftLine == null) missingLines += "LeftLine ";
+                if (rightLine == null) missingLines += "RightLine ";
+                
+                Debug.LogWarning($"{gameObject.name}: Отсутствуют линии прицела ({missingLines.Trim()})! Создайте дочерние GameObject с Image компонентами и назначьте их в Inspector.");
+            }
 
-            RectTransform rectTransform = lineObj.GetComponent<RectTransform>();
-            rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
-            rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
-            rectTransform.pivot = new Vector2(0.5f, 0.5f);
-            rectTransform.localPosition = Vector3.zero;
-
-            return image;
+            // Настраиваем линии только если они есть
+            if (hasAllLines)
+            {
+                SetupLines();
+            }
         }
+
 
         private void SetupLines()
         {

@@ -99,76 +99,27 @@ namespace WAD64.Player
             // Ищем камеру
             playerCamera = GetComponentInChildren<PlayerCamera>();
 
-            // Ищем оружие или создаем автоматически
+            // Валидация: проверяем наличие WeaponManager на сцене
             if (weaponManager == null)
             {
-                CreateWeaponManager();
+                Debug.LogWarning($"{gameObject.name}: WeaponManager не найден! Добавьте WeaponManager как дочерний объект и назначьте в Inspector.");
             }
 
-            // Создаем недостающие holders
-            SetupHolders();
-
-        }
-
-        private void CreateWeaponManager()
-        {
-            // Создаем GameObject для WeaponManager
-            GameObject weaponManagerGO = new GameObject("WeaponManager");
-            weaponManagerGO.transform.SetParent(transform);
-            weaponManagerGO.transform.localPosition = Vector3.zero;
-
-            // Добавляем компонент WeaponManager
-            weaponManager = weaponManagerGO.AddComponent<WAD64.Weapons.WeaponManager>();
-
-            // Создаем тестовые оружия
-            CreateTestWeapons();
-
-        }
-
-        private void CreateTestWeapons()
-        {
-            if (weaponManager == null) return;
-
-            // Создаем GameObject для пистолета
-            GameObject pistolGO = new GameObject("Pistol");
-            pistolGO.transform.SetParent(weaponManager.transform);
-            pistolGO.transform.localPosition = Vector3.zero;
-
-            // Добавляем компонент Pistol
-            var pistol = pistolGO.AddComponent<WAD64.Weapons.Pistol>();
-
-            // Создаем GameObject для дробовика
-            GameObject shotgunGO = new GameObject("Shotgun");
-            shotgunGO.transform.SetParent(weaponManager.transform);
-            shotgunGO.transform.localPosition = Vector3.zero;
-
-            // Добавляем компонент Shotgun
-            var shotgun = shotgunGO.AddComponent<WAD64.Weapons.Shotgun>();
-
-            // Настраиваем WeaponManager с обоими оружиями
-            var weapons = new WAD64.Weapons.Weapon[] { pistol, shotgun };
-            weaponManager.InitializeWithWeapons(weapons);
-        }
-
-        private void SetupHolders()
-        {
-            // Camera Holder
+            // Валидация: проверяем наличие CameraHolder на сцене
             if (cameraHolder == null)
             {
-                GameObject cameraHolderGO = new GameObject("CameraHolder");
-                cameraHolderGO.transform.SetParent(transform);
-                cameraHolderGO.transform.localPosition = new Vector3(0, characterController.height * 0.8f, 0);
-                cameraHolder = cameraHolderGO.transform;
-
-                // Перемещаем камеру в holder, если она есть
-                if (playerCamera != null)
-                {
-                    playerCamera.transform.SetParent(cameraHolder);
-                    playerCamera.transform.localPosition = Vector3.zero;
-                    playerCamera.transform.localRotation = Quaternion.identity;
-                }
+                Debug.LogWarning($"{gameObject.name}: CameraHolder не назначен! Назначьте Transform для камеры в Inspector.");
             }
+            else if (playerCamera != null && playerCamera.transform.parent != cameraHolder)
+            {
+                // Перемещаем камеру в holder, если она есть, но не в правильном месте
+                playerCamera.transform.SetParent(cameraHolder);
+                playerCamera.transform.localPosition = Vector3.zero;
+                playerCamera.transform.localRotation = Quaternion.identity;
+            }
+
         }
+
 
         private void SetupComponentReferences()
         {

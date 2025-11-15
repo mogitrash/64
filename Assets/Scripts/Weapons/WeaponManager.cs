@@ -16,6 +16,7 @@ namespace WAD64.Weapons
         [SerializeField] private bool autoSwitchOnEmpty = false;
 
         // State
+        private Weapon[] instantiatedWeapons; // Инстанцированные оружия
         private Weapon currentWeapon;
         private int currentWeaponIndex = 0;
         private InputHandler inputHandler;
@@ -28,12 +29,18 @@ namespace WAD64.Weapons
         // Properties
         public Weapon CurrentWeapon => currentWeapon;
         public bool HasWeapon => currentWeapon != null;
-        public int WeaponCount => availableWeapons != null ? availableWeapons.Length : 0;
+        public int WeaponCount => instantiatedWeapons != null ? instantiatedWeapons.Length : 0;
         public int CurrentWeaponIndex => currentWeaponIndex;
 
         private void Awake()
         {
             inputHandler = GetComponentInParent<InputHandler>();
+
+            // Валидация: проверяем наличие оружия на сцене
+            if (availableWeapons == null || availableWeapons.Length == 0)
+            {
+                Debug.LogWarning($"{gameObject.name}: availableWeapons пуст! Добавьте оружие в сцену и назначьте в Inspector.");
+            }
 
             InitializeWeapons();
         }
@@ -47,7 +54,8 @@ namespace WAD64.Weapons
             SubscribeToInput();
 
             // Выбираем стартовое оружие
-            if (availableWeapons.Length > 0 && startingWeaponIndex >= 0 && startingWeaponIndex < availableWeapons.Length)
+            if (instantiatedWeapons != null && instantiatedWeapons.Length > 0 &&
+                startingWeaponIndex >= 0 && startingWeaponIndex < instantiatedWeapons.Length)
             {
                 SwitchToWeapon(startingWeaponIndex);
             }
@@ -56,23 +64,42 @@ namespace WAD64.Weapons
 
         private void InitializeWeapons()
         {
-            if (availableWeapons == null)
+            if (availableWeapons == null || availableWeapons.Length == 0)
             {
-                availableWeapons = new Weapon[0];
+                instantiatedWeapons = new Weapon[0];
                 return;
             }
 
-            // Убеждаемся что все оружия неактивны в начале
+            // Работаем только с инстансами, которые уже есть в сцене
+            instantiatedWeapons = new Weapon[availableWeapons.Length];
+
             for (int i = 0; i < availableWeapons.Length; i++)
             {
-                if (availableWeapons[i] != null)
+                if (availableWeapons[i] == null)
                 {
-                    availableWeapons[i].gameObject.SetActive(false);
+                    Debug.LogWarning($"{gameObject.name}: availableWeapons[{i}] не назначен!");
+                    continue;
+                }
+
+                // Проверяем, что это инстанс в сцене, а не префаб
+                if (availableWeapons[i].gameObject.scene.name == null)
+                {
+                    Debug.LogError($"{gameObject.name}: availableWeapons[{i}] является префабом! Используйте инстансы из сцены. Добавьте оружие в сцену и назначьте в Inspector.");
+                    continue;
+                }
+
+                // Используем инстанс из сцены напрямую
+                instantiatedWeapons[i] = availableWeapons[i];
+
+                if (instantiatedWeapons[i] != null)
+                {
+                    // Деактивируем оружие
+                    instantiatedWeapons[i].gameObject.SetActive(false);
 
                     // Подписываемся на события оружия
-                    availableWeapons[i].OnWeaponFired += OnCurrentWeaponFired;
-                    availableWeapons[i].OnReloadCompleted += OnCurrentWeaponReloaded;
-                    availableWeapons[i].OnEmptyClip += OnCurrentWeaponEmpty;
+                    instantiatedWeapons[i].OnWeaponFired += OnCurrentWeaponFired;
+                    instantiatedWeapons[i].OnReloadCompleted += OnCurrentWeaponReloaded;
+                    instantiatedWeapons[i].OnEmptyClip += OnCurrentWeaponEmpty;
                 }
             }
         }
@@ -94,7 +121,8 @@ namespace WAD64.Weapons
         /// </summary>
         public bool SwitchToWeapon(int weaponIndex)
         {
-            if (weaponIndex < 0 || weaponIndex >= availableWeapons.Length || availableWeapons[weaponIndex] == null)
+            if (instantiatedWeapons == null || weaponIndex < 0 ||
+                weaponIndex >= instantiatedWeapons.Length || instantiatedWeapons[weaponIndex] == null)
             {
                 return false;
             }
@@ -107,7 +135,7 @@ namespace WAD64.Weapons
 
             // Активируем новое оружие
             currentWeaponIndex = weaponIndex;
-            currentWeapon = availableWeapons[weaponIndex];
+            currentWeapon = instantiatedWeapons[weaponIndex];
             currentWeapon.gameObject.SetActive(true);
 
             OnWeaponChanged?.Invoke(currentWeapon);
@@ -120,9 +148,9 @@ namespace WAD64.Weapons
         /// </summary>
         public void SwitchToNextWeapon()
         {
-            if (availableWeapons.Length <= 1) return;
+            if (instantiatedWeapons == null || instantiatedWeapons.Length <= 1) return;
 
-            int nextIndex = (currentWeaponIndex + 1) % availableWeapons.Length;
+            int nextIndex = (currentWeaponIndex + 1) % instantiatedWeapons.Length;
             SwitchToWeapon(nextIndex);
         }
 
@@ -131,10 +159,10 @@ namespace WAD64.Weapons
         /// </summary>
         public void SwitchToPreviousWeapon()
         {
-            if (availableWeapons.Length <= 1) return;
+            if (instantiatedWeapons == null || instantiatedWeapons.Length <= 1) return;
 
             int prevIndex = currentWeaponIndex - 1;
-            if (prevIndex < 0) prevIndex = availableWeapons.Length - 1;
+            if (prevIndex < 0) prevIndex = instantiatedWeapons.Length - 1;
 
             SwitchToWeapon(prevIndex);
         }
@@ -152,7 +180,8 @@ namespace WAD64.Weapons
             if (fired)
             {
                 // Автоматическая смена оружия при окончании патронов
-                if (autoSwitchOnEmpty && currentWeapon.NeedsReload && availableWeapons.Length > 1)
+                if (autoSwitchOnEmpty && currentWeapon.NeedsReload &&
+                    instantiatedWeapons != null && instantiatedWeapons.Length > 1)
                 {
                     SwitchToNextWeapon();
                 }
@@ -171,7 +200,7 @@ namespace WAD64.Weapons
 
         private void OnWeaponSwitch(float direction)
         {
-            if (availableWeapons.Length <= 1)
+            if (instantiatedWeapons == null || instantiatedWeapons.Length <= 1)
             {
                 return;
             }
@@ -188,7 +217,7 @@ namespace WAD64.Weapons
 
         private void OnWeaponNumberPressed(int weaponIndex)
         {
-            if (weaponIndex >= 0 && weaponIndex < availableWeapons.Length)
+            if (instantiatedWeapons != null && weaponIndex >= 0 && weaponIndex < instantiatedWeapons.Length)
             {
                 SwitchToWeapon(weaponIndex);
             }
@@ -229,7 +258,7 @@ namespace WAD64.Weapons
             availableWeapons = weapons ?? new Weapon[0];
             InitializeWeapons();
 
-            if (availableWeapons.Length > 0)
+            if (instantiatedWeapons != null && instantiatedWeapons.Length > 0)
             {
                 SwitchToWeapon(0);
             }
@@ -242,9 +271,19 @@ namespace WAD64.Weapons
         {
             if (weapon == null) return;
 
-            // Увеличиваем массив
+            // Увеличиваем массивы
             System.Array.Resize(ref availableWeapons, availableWeapons.Length + 1);
             availableWeapons[availableWeapons.Length - 1] = weapon;
+
+            if (instantiatedWeapons == null)
+            {
+                instantiatedWeapons = new Weapon[1];
+            }
+            else
+            {
+                System.Array.Resize(ref instantiatedWeapons, instantiatedWeapons.Length + 1);
+            }
+            instantiatedWeapons[instantiatedWeapons.Length - 1] = weapon;
 
             // Настраиваем оружие
             weapon.gameObject.SetActive(false);
@@ -258,9 +297,9 @@ namespace WAD64.Weapons
         /// </summary>
         public void RemoveWeapon(int weaponIndex)
         {
-            if (weaponIndex < 0 || weaponIndex >= availableWeapons.Length) return;
+            if (instantiatedWeapons == null || weaponIndex < 0 || weaponIndex >= instantiatedWeapons.Length) return;
 
-            Weapon weaponToRemove = availableWeapons[weaponIndex];
+            Weapon weaponToRemove = instantiatedWeapons[weaponIndex];
             if (weaponToRemove != null)
             {
                 // Отписываемся от событий
@@ -269,17 +308,32 @@ namespace WAD64.Weapons
                 weaponToRemove.OnEmptyClip -= OnCurrentWeaponEmpty;
             }
 
-            // Удаляем из массива
-            var newArray = new Weapon[availableWeapons.Length - 1];
+            // Удаляем из массива инстанцированных оружий
+            var newArray = new Weapon[instantiatedWeapons.Length - 1];
             int newIndex = 0;
-            for (int i = 0; i < availableWeapons.Length; i++)
+            for (int i = 0; i < instantiatedWeapons.Length; i++)
             {
                 if (i != weaponIndex)
                 {
-                    newArray[newIndex++] = availableWeapons[i];
+                    newArray[newIndex++] = instantiatedWeapons[i];
                 }
             }
-            availableWeapons = newArray;
+            instantiatedWeapons = newArray;
+
+            // Удаляем из массива префабов
+            if (availableWeapons != null && weaponIndex < availableWeapons.Length)
+            {
+                var newPrefabArray = new Weapon[availableWeapons.Length - 1];
+                newIndex = 0;
+                for (int i = 0; i < availableWeapons.Length; i++)
+                {
+                    if (i != weaponIndex)
+                    {
+                        newPrefabArray[newIndex++] = availableWeapons[i];
+                    }
+                }
+                availableWeapons = newPrefabArray;
+            }
 
             // Корректируем текущий индекс
             if (currentWeaponIndex >= weaponIndex && currentWeaponIndex > 0)
@@ -288,11 +342,11 @@ namespace WAD64.Weapons
             }
 
             // Если удалили текущее оружие, переключаемся на другое
-            if (currentWeapon == weaponToRemove && availableWeapons.Length > 0)
+            if (currentWeapon == weaponToRemove && instantiatedWeapons.Length > 0)
             {
-                SwitchToWeapon(Mathf.Min(currentWeaponIndex, availableWeapons.Length - 1));
+                SwitchToWeapon(Mathf.Min(currentWeaponIndex, instantiatedWeapons.Length - 1));
             }
-            else if (availableWeapons.Length == 0)
+            else if (instantiatedWeapons.Length == 0)
             {
                 currentWeapon = null;
                 currentWeaponIndex = 0;
@@ -304,18 +358,18 @@ namespace WAD64.Weapons
         /// </summary>
         public string GetDebugInfo()
         {
-            if (availableWeapons.Length == 0)
+            if (instantiatedWeapons == null || instantiatedWeapons.Length == 0)
                 return "No weapons available";
 
-            string info = $"Weapons ({currentWeaponIndex + 1}/{availableWeapons.Length}):\n";
+            string info = $"Weapons ({currentWeaponIndex + 1}/{instantiatedWeapons.Length}):\n";
 
-            for (int i = 0; i < availableWeapons.Length; i++)
+            for (int i = 0; i < instantiatedWeapons.Length; i++)
             {
-                if (availableWeapons[i] != null)
+                if (instantiatedWeapons[i] != null)
                 {
                     string marker = i == currentWeaponIndex ? ">>> " : "    ";
-                    info += $"{marker}{i}: {availableWeapons[i].WeaponName} " +
-                           $"({availableWeapons[i].CurrentAmmo}/{availableWeapons[i].MaxAmmo})\n";
+                    info += $"{marker}{i}: {instantiatedWeapons[i].WeaponName} " +
+                           $"({instantiatedWeapons[i].CurrentAmmo}/{instantiatedWeapons[i].MaxAmmo})\n";
                 }
             }
 
@@ -341,15 +395,15 @@ namespace WAD64.Weapons
             }
 
             // Отписываемся от событий оружий
-            if (availableWeapons != null)
+            if (instantiatedWeapons != null)
             {
-                for (int i = 0; i < availableWeapons.Length; i++)
+                for (int i = 0; i < instantiatedWeapons.Length; i++)
                 {
-                    if (availableWeapons[i] != null)
+                    if (instantiatedWeapons[i] != null)
                     {
-                        availableWeapons[i].OnWeaponFired -= OnCurrentWeaponFired;
-                        availableWeapons[i].OnReloadCompleted -= OnCurrentWeaponReloaded;
-                        availableWeapons[i].OnEmptyClip -= OnCurrentWeaponEmpty;
+                        instantiatedWeapons[i].OnWeaponFired -= OnCurrentWeaponFired;
+                        instantiatedWeapons[i].OnReloadCompleted -= OnCurrentWeaponReloaded;
+                        instantiatedWeapons[i].OnEmptyClip -= OnCurrentWeaponEmpty;
                     }
                 }
             }

@@ -123,10 +123,10 @@ namespace WAD64.Utils
             GUILayout.Label("F4: Test Camera Shake", labelStyle);
             GUILayout.Label("F5: Force Reload Weapon", labelStyle);
             GUILayout.Label("F6: Test Shot", labelStyle);
+            GUILayout.Label("F9: Restart Level", labelStyle);
             GUILayout.Label("1/2: Switch Weapons", labelStyle);
             GUILayout.Label("Mouse Wheel: Cycle Weapons", labelStyle);
             GUILayout.Label("P: Pause/Resume Game", labelStyle);
-            GUILayout.Label("R: Restart Level", labelStyle);
         }
 
         private void DisplayPlayerInfo()
@@ -226,23 +226,6 @@ namespace WAD64.Utils
             GUILayout.Label($"Range: {weapon.Range}m", labelStyle);
             GUILayout.Label($"Can Fire: {weapon.CanFire}", labelStyle);
             GUILayout.Label($"Reloading: {weapon.IsReloading} ({weapon.ReloadProgress:P0})", labelStyle);
-
-            // Информация о последнем выстреле
-            var pistol = weapon as WAD64.Weapons.Pistol;
-            var shotgun = weapon as WAD64.Weapons.Shotgun;
-
-            if (pistol != null && pistol.HasRecentShot())
-            {
-                var shotInfo = pistol.GetLastShotInfo();
-                GUILayout.Label($"Last Shot: {(shotInfo.hit ? "HIT" : "MISS")}", labelStyle);
-                GUILayout.Label($"Distance: {Vector3.Distance(shotInfo.origin, shotInfo.hitPoint):F1}m", labelStyle);
-            }
-            else if (shotgun != null && shotgun.HasRecentShot())
-            {
-                var shotInfo = shotgun.GetLastShotInfo();
-                GUILayout.Label($"Last Shot: {shotInfo.totalHits}/8 pellets hit", labelStyle);
-                GUILayout.Label($"Hit Rate: {(shotInfo.totalHits / 8f):P0}", labelStyle);
-            }
         }
 
         #region Test Functions
