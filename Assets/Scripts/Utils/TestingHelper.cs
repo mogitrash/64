@@ -123,10 +123,10 @@ namespace WAD64.Utils
             GUILayout.Label("F4: Test Camera Shake", labelStyle);
             GUILayout.Label("F5: Force Reload Weapon", labelStyle);
             GUILayout.Label("F6: Test Shot", labelStyle);
+            GUILayout.Label("F9: Restart Level", labelStyle);
             GUILayout.Label("1/2: Switch Weapons", labelStyle);
             GUILayout.Label("Mouse Wheel: Cycle Weapons", labelStyle);
             GUILayout.Label("P: Pause/Resume Game", labelStyle);
-            GUILayout.Label("R: Restart Level", labelStyle);
         }
 
         private void DisplayPlayerInfo()

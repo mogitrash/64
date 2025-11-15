@@ -165,8 +165,8 @@ namespace WAD64.Managers
                 else PauseGame();
             }
 
-            // Изменено с R на F5 для перезапуска, чтобы не конфликтовать с перезарядкой оружия
-            if (Input.GetKeyDown(KeyCode.F5))
+            // Изменено с R на F9 для перезапуска, чтобы не конфликтовать с перезарядкой оружия (R) и тестовой перезарядкой (F5)
+            if (Input.GetKeyDown(KeyCode.F9))
             {
                 RestartLevel();
             }
