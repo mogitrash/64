@@ -27,6 +27,10 @@ namespace WAD64.Weapons
         [SerializeField] protected int pelletCount = 1; // Количество дробин (1 = обычный выстрел, >1 = дробовик)
         [SerializeField] protected float pelletSpread = 0.15f; // Разброс дробин в радианах
 
+        [Header("Sprite Animation")]
+        [Tooltip("Данные спрайтов для анимации оружия (прикрепляется к префабу)")]
+        [SerializeField] protected WAD64.UI.WeaponSpriteData spriteData;
+
         [Header("Effects")]
         [SerializeField] protected ParticleSystem muzzleFlash;
         [SerializeField] protected AudioClip fireSound;
@@ -62,12 +66,14 @@ namespace WAD64.Weapons
         public string WeaponName => weaponName;
         public float Damage => damage;
         public float Range => range;
+        public float FireRate => fireRate;
         public int CurrentAmmo => currentAmmo;
         public int MaxAmmo => maxAmmo;
         public bool IsReloading => isReloading;
         public bool CanFire => !isReloading && currentAmmo > 0 && Time.time >= lastFireTime + (1f / fireRate);
         public bool NeedsReload => currentAmmo == 0;
         public float ReloadProgress => isReloading ? Mathf.Clamp01((Time.time - reloadStartTime) / reloadTime) : 0f;
+        public WAD64.UI.WeaponSpriteData SpriteData => spriteData;
 
         protected virtual void Awake()
         {
