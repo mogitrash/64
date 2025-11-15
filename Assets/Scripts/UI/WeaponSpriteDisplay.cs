@@ -150,16 +150,25 @@ namespace WAD64.UI
 
         private WeaponSpriteData FindSpriteDataForWeapon(Weapon weapon)
         {
-            if (weapon == null || weaponSpriteData == null)
+            if (weapon == null)
                 return null;
 
-            string weaponName = weapon.WeaponName;
-
-            foreach (var data in weaponSpriteData)
+            // Сначала пытаемся получить данные напрямую из оружия (предпочтительный способ)
+            if (weapon.SpriteData != null)
             {
-                if (data != null && data.weaponName == weaponName)
+                return weapon.SpriteData;
+            }
+
+            // Fallback: поиск по имени (для обратной совместимости)
+            if (weaponSpriteData != null && weaponSpriteData.Length > 0)
+            {
+                string weaponName = weapon.WeaponName;
+                foreach (var data in weaponSpriteData)
                 {
-                    return data;
+                    if (data != null && data.weaponName == weaponName)
+                    {
+                        return data;
+                    }
                 }
             }
 
@@ -221,7 +230,16 @@ namespace WAD64.UI
                 return;
             }
 
-            float frameTime = 1f / currentSpriteData.fireAnimationSpeed;
+            // Скорость анимации зависит от скорострельности оружия
+            // Анимация должна завершиться за время между выстрелами (1/fireRate)
+            if (currentWeapon == null)
+            {
+                ReturnToIdle();
+                return;
+            }
+
+            float totalAnimationTime = 1f / currentWeapon.FireRate;
+            float frameTime = totalAnimationTime / currentSpriteData.fireSprites.Length;
 
             if (animationTimer >= frameTime)
             {
@@ -447,8 +465,7 @@ namespace WAD64.UI
             if (currentSpriteData == null || !currentSpriteData.IsValid())
             {
                 Debug.LogWarning($"WeaponSpriteDisplay: No sprite data found for weapon '{weapon.WeaponName}'. " +
-                    $"Available sprite data: {(weaponSpriteData != null ? weaponSpriteData.Length : 0)} entries. " +
-                    $"Make sure weaponName in ScriptableObject matches '{weapon.WeaponName}'");
+                    $"Attach WeaponSpriteData directly to the weapon prefab, or add it to the weaponSpriteData array for fallback search.");
                 if (weaponImage != null)
                 {
                     weaponImage.sprite = null;

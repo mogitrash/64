@@ -55,7 +55,17 @@ MonoBehaviour:
   hitLayers:
     serializedVersion: 2
     m_Bits: 4294967295
+  pelletCount: 1
+  pelletSpread: 0.15
+  spriteData: {fileID: 11400000, guid: f6fdd40b8511e4a30b23d23443d1338d, type: 2}
   muzzleFlash: {fileID: 0}
   fireSound: {fileID: 8300000, guid: 3fd7a2ffae420410baa9e2ce192cad2b, type: 3}
   reloadSound: {fileID: 8300000, guid: c601dbf5d2a184506a34dfada07560de, type: 3}
   emptySound: {fileID: 0}
+  showHitMarkers: 1
+  hitMarkerColor: {r: 1, g: 0, b: 0, a: 1}
+  hitMarkerSize: 0.1
+  hitMarkerDuration: 2
+  showTrajectories: 1
+  trajectoryColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  trajectoryDuration: 0.5

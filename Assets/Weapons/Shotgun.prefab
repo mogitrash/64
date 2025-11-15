@@ -48,18 +48,19 @@ MonoBehaviour:
   damage: 5
   range: 100
   fireRate: 1
-  reloadTime: 2
-  maxAmmo: 12
-  currentAmmo: 12
+  reloadTime: 0.5
+  maxAmmo: 1
+  currentAmmo: 1
   spread: 0.02
   hitLayers:
     serializedVersion: 2
     m_Bits: 4294967295
   pelletCount: 8
   pelletSpread: 0.1
+  spriteData: {fileID: 11400000, guid: 2f11e6b89359b46969caad8e3717384a, type: 2}
   muzzleFlash: {fileID: 0}
-  fireSound: {fileID: 0}
-  reloadSound: {fileID: 0}
+  fireSound: {fileID: 8300000, guid: 7835b4990e50940fda02ade27aeeab53, type: 3}
+  reloadSound: {fileID: 8300000, guid: 3c051bd6fc3354d75a634f4a3651a483, type: 3}
   emptySound: {fileID: 0}
   showHitMarkers: 1
   hitMarkerColor: {r: 1, g: 0, b: 0, a: 1}

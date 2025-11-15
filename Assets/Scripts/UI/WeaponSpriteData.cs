@@ -21,11 +21,8 @@ namespace WAD64.UI
         public float idleAnimationSpeed = 10f;
 
         [Header("Fire Animation")]
-        [Tooltip("Спрайты для анимации выстрела (проигрывается один раз)")]
+        [Tooltip("Спрайты для анимации выстрела (проигрывается один раз, скорость зависит от fireRate оружия)")]
         public Sprite[] fireSprites = new Sprite[0];
-
-        [Tooltip("Скорость анимации выстрела (кадров в секунду)")]
-        public float fireAnimationSpeed = 20f;
 
         [Header("Reload Animation")]
         [Tooltip("Спрайты для анимации перезарядки (проигрывается один раз, синхронизируется с реальным временем перезарядки)")]
