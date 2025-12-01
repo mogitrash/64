@@ -15,10 +15,13 @@
 #### ✅ **Component-Based Architecture**
 - Разделение ответственности:
   - `EnemyController` - главный контроллер, координирует все системы
-  - `EnemyMovement` - движение и навигация
+  - `EnemyAI` - логика состояний FSM (Patrol → Aggro → Attack → Dead)
+  - `EnemyMovement` - движение и навигация (CharacterController, патрулирование, обход препятствий)
   - `EnemyHealth` - здоровье и урон (реализует `IDamageable`)
-  - `EnemyAI` - логика состояний FSM
-  - `EnemyAttack` - логика атак
+  - `EnemyAttack` - логика атак игрока
+  - `AngleToPlayer` - вычисление угла к игроку для анимации спрайта (8 направлений)
+  - `EnemyAnimation` - управление аниматором на основе угла к игроку
+  - `EnemySpriteLook` - альтернативный компонент для поворота спрайта к игроку (опционально)
 
 #### ✅ **Простота превыше всего**
 - Избегайте сложных алгоритмов (A*, pathfinding)
@@ -111,9 +114,15 @@ if (Physics.Raycast(transform.position, directionToPlayer, out hit, detectionRan
 ```
 
 **3. Оптимизация:**
-- Проверяйте обнаружение не каждый кадр, а раз в 0.1-0.5 секунды
-- Используйте `InvokeRepeating` или таймеры
+- Проверяйте обнаружение не каждый кадр, а раз в 0.1-0.5 секунды (реализовано через `detectionUpdateInterval`)
+- Используйте таймеры для контроля частоты проверок
 - Кешируйте ссылку на игрока через `CoreReferences.Player`
+
+**4. Гистерезис обнаружения (реализовано в EnemyAI):**
+- Используются разные пороги для входа и выхода из состояния Aggro
+- `detectionRadius` - для обнаружения игрока (вход в Aggro)
+- `aggroLoseDistance` - для потери агро (выход из Aggro)
+- Предотвращает "дрожание" состояний при граничных значениях расстояния
 
 ### 4. Движение и навигация
 
@@ -140,12 +149,34 @@ if (Physics.Raycast(transform.position, transform.forward, 2f))
 
 **Патрулирование:**
 ```csharp
-// Движение между точками
-if (Vector3.Distance(transform.position, currentWaypoint) < 0.5f)
+// Движение между точками (реализовано в EnemyMovement)
+public void Patrol()
 {
-    currentWaypoint = GetNextWaypoint();
+    if (waypoints == null || waypoints.Length == 0)
+    {
+        Stop();
+        return;
+    }
+    
+    Transform currentWaypoint = waypoints[currentWaypointIndex];
+    float distance = Vector3.Distance(transform.position, currentWaypoint.position);
+    
+    if (distance <= waypointReachDistance)
+    {
+        MoveToNextWaypoint();
+    }
+    else
+    {
+        MoveTo(currentWaypoint.position);
+    }
 }
 ```
+
+**Гравитация (реализовано в EnemyMovement):**
+- Используется `CharacterController` для движения
+- Применяется гравитация для вертикального движения
+- `groundedGravity` - небольшая гравитация на земле для стабильности
+- `gravity` - полная гравитация в воздухе
 
 ### 5. Оптимизация производительности
 
@@ -186,7 +217,69 @@ private void Awake()
 - Переиспользование врагов вместо создания/уничтожения
 - Особенно важно для Runner и Exploder
 
-### 6. Типы врагов проекта
+### 6. Визуализация и анимация спрайтов
+
+#### ✅ **AngleToPlayer - Вычисление угла к игроку**
+- Вычисляет угол между направлением врага и направлением к игроку
+- Использует `Vector3.SignedAngle` для определения направления
+- Возвращает индекс направления (0-7) для 8-направленной анимации:
+  - 0: Вперед (front)
+  - 1-3: Назад (back, левая/правая стороны)
+  - 4: Прямо назад
+  - 5-7: Вперед (левая/правая стороны)
+- Флипает спрайт по горизонтали (X) при отрицательном угле
+
+```csharp
+// Вычисление угла к игроку
+angle = Vector3.SignedAngle(from: targetDir, to: transform.forward, axis: Vector3.up);
+
+// Флип спрайта по горизонтали
+Vector3 tempScale = Vector3.one;
+if (angle > 0)
+{
+    tempScale.x = -1f; // Только X, не весь Vector3!
+}
+spriteRenderer.transform.localScale = tempScale;
+```
+
+#### ✅ **EnemyAnimation - Управление аниматором**
+- Получает индекс направления от `AngleToPlayer`
+- Устанавливает параметр `spriteRotation` в аниматоре для 8-направленной анимации
+- Подписывается на событие смерти `EnemyController.OnEnemyDied`
+- Проигрывает анимацию смерти через trigger параметр `Death` в Animator
+- Работает с 8-направленной анимацией спрайтов и анимацией смерти
+
+```csharp
+// Подписка на событие смерти
+enemyController.OnEnemyDied += PlayDeathAnimation;
+
+// Проигрывание анимации смерти
+private void PlayDeathAnimation()
+{
+    if (animator != null)
+    {
+        animator.SetTrigger("Death"); // Используется trigger для одноразовой анимации
+    }
+}
+```
+
+**Настройка Animator Controller для анимации смерти:**
+- Создайте trigger параметр `Death` в Animator Controller
+- Добавьте состояние `death` с анимацией `ImpDeath.anim`
+- Создайте переход из Any State (или из всех состояний) в `death` с условием `Death` (trigger)
+- Настройки перехода:
+  - Снимите галочку "Has Exit Time"
+  - Установите "Transition Duration" = 0 (мгновенный переход)
+  - Установите "Interruption Source" = None (чтобы анимация не прерывалась)
+- В состоянии `death` снимите галочку "Loop Time" (если анимация не должна зацикливаться)
+- Убедитесь, что нет обратных переходов из `death` в другие состояния
+
+#### ✅ **EnemySpriteLook - Альтернативный поворот спрайта**
+- Простой компонент для поворота спрайта к игроку через `LookAt`
+- Используется как альтернатива `AngleToPlayer` для простых случаев
+- Выравнивает Y координату для горизонтального поворота
+
+### 7. Типы врагов проекта (планируется)
 
 #### **Walker (Медленный, устойчивый)**
 - **Скорость**: Низкая (2-3 м/с)
@@ -206,7 +299,9 @@ private void Awake()
 - **Поведение**: Агрессивное преследование, взрыв при смерти
 - **Атака**: Взрыв при приближении или смерти
 
-### 7. Интеграция с существующими системами
+**Примечание**: Типы врагов еще не реализованы. Базовая система готова для расширения.
+
+### 8. Интеграция с существующими системами
 
 #### ✅ **Использование CoreReferences**
 ```csharp
@@ -236,18 +331,31 @@ public class EnemyHealth : MonoBehaviour, IDamageable
 
 #### ✅ **События для координации**
 ```csharp
+// EnemyController
+public System.Action OnEnemyInitialized;
 public System.Action OnEnemyDied;
-public System.Action<float> OnHealthChanged;
 
-// Уведомление GameManager
+// EnemyAI
+public System.Action<EnemyState> OnStateChanged;
+
+// EnemyHealth
+public System.Action<float, float> OnHealthChanged; // current, max
+public System.Action OnEnemyDied;
+
+// EnemyAttack
+public System.Action OnAttackPerformed;
+public System.Action OnAttackStarted;
+public System.Action OnAttackEnded;
+
+// Уведомление GameManager (реализовано в EnemyController)
 OnEnemyDied?.Invoke();
 if (CoreReferences.GameManager != null)
 {
-    CoreReferences.GameManager.OnEnemyKilled();
+    CoreReferences.GameManager.OnEnemyKilledHandler(0); // 0 = базовый тип врага
 }
 ```
 
-### 8. Отладка и визуализация
+### 9. Отладка и визуализация
 
 #### ✅ **Gizmos для отладки**
 ```csharp
@@ -277,41 +385,49 @@ Debug.Log($"[{gameObject.name}] State: {currentState}, Health: {currentHealth}")
 #endif
 ```
 
-### 9. Структура файлов
+### 10. Структура файлов
 
 ```
 Assets/Scripts/Enemies/
 ├── Core/
-│   ├── EnemyController.cs          # Главный контроллер
-│   ├── EnemyAI.cs                   # FSM логика
-│   ├── EnemyMovement.cs             # Движение
-│   ├── EnemyHealth.cs                # Здоровье (IDamageable)
-│   └── EnemyAttack.cs                # Атаки
-├── Types/
-│   ├── Walker/
-│   │   └── WalkerEnemy.cs           # Специфичная логика Walker
-│   ├── Runner/
-│   │   └── RunnerEnemy.cs           # Специфичная логика Runner
-│   └── Exploder/
-│       └── ExploderEnemy.cs          # Специфичная логика Exploder
+│   ├── EnemyController.cs          # Главный контроллер, координирует все системы
+│   ├── EnemyAI.cs                   # FSM логика (Patrol → Aggro → Attack → Dead)
+│   ├── EnemyMovement.cs             # Движение (CharacterController, патрулирование, обход препятствий)
+│   ├── EnemyHealth.cs               # Здоровье (IDamageable)
+│   ├── EnemyAttack.cs               # Атаки игрока
+│   ├── AngleToPlayer.cs             # Вычисление угла к игроку для анимации (8 направлений)
+│   ├── EnemyAnimation.cs            # Управление аниматором на основе угла
+│   └── EnemySpriteLook.cs           # Альтернативный поворот спрайта к игроку (опционально)
 └── README.md                         # Этот файл
 ```
 
-### 10. Чеклист реализации
+**Примечание**: Папка `Types/` для специфичных типов врагов (Walker, Runner, Exploder) еще не создана. Базовая система готова для расширения.
 
-- [ ] Создать базовый `EnemyController` с FSM
-- [ ] Реализовать состояния: Patrol, Aggro, Attack
-- [ ] Добавить `EnemyHealth` с `IDamageable`
-- [ ] Реализовать простое движение к цели
-- [ ] Добавить обнаружение игрока (OverlapSphere)
-- [ ] Реализовать патрулирование (waypoints)
-- [ ] Добавить логику атаки
-- [ ] Интегрировать с `CoreReferences`
-- [ ] Добавить Gizmos для отладки
-- [ ] Оптимизировать обновления (не каждый кадр)
-- [ ] Реализовать Walker, Runner, Exploder
+### 11. Чеклист реализации
 
-### 11. Рекомендации по коду
+#### ✅ Реализовано:
+- [x] Создать базовый `EnemyController` с FSM
+- [x] Реализовать состояния: Patrol, Aggro, Attack, Dead
+- [x] Добавить `EnemyHealth` с `IDamageable`
+- [x] Реализовать простое движение к цели (CharacterController)
+- [x] Добавить обнаружение игрока (OverlapSphere + гистерезис)
+- [x] Реализовать патрулирование (waypoints с поддержкой циклов)
+- [x] Добавить логику атаки (с cooldown и проверкой расстояния)
+- [x] Интегрировать с `CoreReferences`
+- [x] Добавить Gizmos для отладки (радиусы, waypoints, направление)
+- [x] Оптимизировать обновления (detectionUpdateInterval)
+- [x] Реализовать обход препятствий (простой raycast)
+- [x] Добавить гравитацию для CharacterController
+- [x] Реализовать визуализацию спрайтов (AngleToPlayer, EnemyAnimation)
+- [x] Добавить события для координации систем (OnEnemyDied, OnStateChanged)
+
+#### ⏳ Планируется:
+- [ ] Реализовать Walker, Runner, Exploder типы врагов
+- [ ] Добавить Object Pooling для оптимизации
+- [ ] Расширить систему анимаций (атака, смерть, урон)
+- [ ] Добавить звуковые эффекты для врагов
+
+### 12. Рекомендации по коду
 
 #### ✅ **DO (Делайте)**
 - Используйте простые проверки расстояния
@@ -327,11 +443,74 @@ Assets/Scripts/Enemies/
 - Не делайте прямые зависимости между врагами
 - Не забывайте проверять на null
 
-### 12. Дополнительные ресурсы
+### 13. Дополнительные ресурсы
 
 - **Unity Manual**: AI Navigation (если понадобится NavMesh)
 - **Unity Learn**: Creating AI for Games
 - **Best Practices**: Keep it simple, test frequently, iterate
+
+## Текущая реализация
+
+### Реализованные компоненты
+
+1. **EnemyController** - Главный контроллер, координирует все системы врага
+   - Инициализирует компоненты в `Awake()`
+   - Подписывается на события здоровья и ИИ
+   - Уведомляет `GameManager` о смерти врага
+   - Опция `keepCorpseOnScene` - позволяет оставить труп на сцене вместо уничтожения
+   - При смерти отключает все активные компоненты (ИИ, движение, атака), оставляя только визуальную часть
+
+2. **EnemyAI** - FSM система с состояниями:
+   - `Patrol` - патрулирование между waypoints
+   - `Aggro` - преследование игрока
+   - `Attack` - атака игрока вблизи
+   - `Dead` - смерть врага
+   - Использует гистерезис для стабильного переключения состояний
+   - Оптимизировано: обнаружение игрока не каждый кадр
+
+3. **EnemyMovement** - Система движения:
+   - Использует `CharacterController` для движения
+   - Поддерживает патрулирование с циклами
+   - Простой обход препятствий через raycast
+   - Гравитация для вертикального движения
+   - Плавное ускорение и поворот
+
+4. **EnemyHealth** - Система здоровья:
+   - Реализует `IDamageable` для совместимости с оружием
+   - События для уведомления о изменении здоровья и смерти
+   - Метод `RestoreHealth()` для восстановления
+
+5. **EnemyAttack** - Система атаки:
+   - Проверка расстояния до игрока
+   - Cooldown между атаками
+   - Опциональная проверка прямой видимости (SphereCast)
+   - События для анимации и звуков
+
+6. **AngleToPlayer** - Визуализация спрайта:
+   - Вычисляет угол к игроку (8 направлений)
+   - Флипает спрайт по горизонтали
+   - Возвращает индекс направления для аниматора
+
+7. **EnemyAnimation** - Управление анимацией:
+   - Устанавливает параметр `spriteRotation` в аниматоре для 8-направленной анимации
+   - Подписывается на событие смерти `EnemyController.OnEnemyDied`
+   - Проигрывает анимацию смерти через trigger параметр `Death` в Animator
+   - Использует trigger вместо bool для одноразовой анимации смерти
+
+8. **EnemySpriteLook** - Альтернативный поворот спрайта:
+   - Простой компонент для поворота через `LookAt`
+   - Используется как альтернатива `AngleToPlayer`
+
+### Особенности реализации
+
+- **Гистерезис обнаружения**: Разные пороги для входа/выхода из Aggro предотвращают "дрожание" состояний
+- **Оптимизация производительности**: Обнаружение игрока обновляется с интервалом (по умолчанию 0.2 сек)
+- **Гравитация**: Правильная обработка вертикального движения через CharacterController
+- **События**: Слабая связанность через события между компонентами
+- **Gizmos**: Визуализация радиусов, waypoints, направлений для отладки
+- **Анимация смерти**: Используется trigger параметр `Death` для одноразовой анимации смерти, что предотвращает конфликты с другими переходами
+- **Уничтожение GameObject**: После смерти враг уничтожается с задержкой (по умолчанию 2 секунды) для проигрывания анимации смерти
+- **Опция трупа на сцене**: Если `keepCorpseOnScene = true`, враг не уничтожается, а остается на сцене как труп. Все активные компоненты (ИИ, движение, атака, CharacterController, AngleToPlayer, EnemySpriteLook) отключаются, остаются только визуальные компоненты (SpriteRenderer, Animator)
 
 ## Примечания
 
@@ -339,3 +518,4 @@ Assets/Scripts/Enemies/
 - Фокус на **производительности** и **простоте поддержки**
 - Архитектура позволяет легко добавлять новые типы врагов
 - Все враги должны реализовывать `IDamageable` для совместимости с оружием
+- Типы врагов (Walker, Runner, Exploder) еще не реализованы - базовая система готова для расширения

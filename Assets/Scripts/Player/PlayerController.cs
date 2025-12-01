@@ -230,13 +230,7 @@ namespace WAD64.Player
         private void OnPausePressed()
         {
             // Передаем событие паузы в GameManager
-            if (CoreReferences.GameManager != null)
-            {
-                if (CoreReferences.GameManager.IsPaused)
-                    CoreReferences.GameManager.ResumeGame();
-                else
-                    CoreReferences.GameManager.PauseGame();
-            }
+            CoreReferences.GameManager?.TogglePause();
         }
 
         #endregion

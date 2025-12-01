@@ -1,8 +1,9 @@
 using UnityEngine;
 using WAD64.Core;
 using WAD64.Managers;
-using WAD64.Weapons;
 using WAD64.Player;
+using WAD64.Weapons;
+using WAD64.UI.Menu;
 
 namespace WAD64.Core
 {
@@ -130,6 +131,17 @@ namespace WAD64.Core
             else
             {
                 Debug.LogWarning("UIManager не найден в сцене! Добавьте UIManager в сцену.");
+            }
+
+            var existingMenuManager = FindFirstObjectByType<MenuManager>();
+            if (existingMenuManager != null)
+            {
+                CoreReferences.MenuManager = existingMenuManager;
+                Debug.Log("MenuManager найден в сцене, используется существующий.");
+            }
+            else
+            {
+                Debug.LogWarning("MenuManager не найден в сцене! Добавьте MenuManager в сцену.");
             }
 
             // Game Manager (последний, так как может зависеть от других) - ищем в сцене

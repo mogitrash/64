@@ -1,5 +1,6 @@
 using UnityEngine;
 using WAD64.Core;
+using WAD64.UI.Menu;
 
 namespace WAD64.Managers
 {
@@ -23,6 +24,8 @@ namespace WAD64.Managers
         public System.Action OnGamePaused;
         public System.Action OnGameResumed;
         public System.Action OnGameOver;
+        public System.Action OnPauseMenuOpened;
+        public System.Action OnPauseMenuClosed;
         public System.Action OnLevelCompleted;
         public System.Action<int> OnEnemyKilled;
         public System.Action<string> OnPickupCollected;
@@ -68,14 +71,38 @@ namespace WAD64.Managers
 
         #region Game State Management
 
+        public void TogglePause()
+        {
+            if (isGameOver) return;
+
+            // Если открыты какие-то меню - закрываем ВСЕ и продолжаем игру
+            if (MenuManager.Instance != null && MenuManager.Instance.IsAnyMenuOpen())
+            {
+                ResumeGame();
+                return;
+            }
+
+            // Если игра не на паузе - открываем меню паузы и ставим игру на паузу
+            if (!isPaused)
+            {
+                PauseGame();
+            }
+            else
+            {
+                // Если игра на паузе, но меню не открыто - возобновляем игру
+                ResumeGame();
+            }
+        }
+
         public void PauseGame()
         {
             if (isPaused || isGameOver) return;
 
             isPaused = true;
             Time.timeScale = 0f;
-
             OnGamePaused?.Invoke();
+            OnPauseMenuOpened?.Invoke();
+            MenuManager.Instance?.ShowPauseMenu();
         }
 
         public void ResumeGame()
@@ -84,8 +111,9 @@ namespace WAD64.Managers
 
             isPaused = false;
             Time.timeScale = 1f;
-
             OnGameResumed?.Invoke();
+            MenuManager.Instance?.HideAllMenus();
+            OnPauseMenuClosed?.Invoke();
         }
 
         public void GameOver()
@@ -161,8 +189,7 @@ namespace WAD64.Managers
         {
             if (Input.GetKeyDown(KeyCode.P))
             {
-                if (isPaused) ResumeGame();
-                else PauseGame();
+                TogglePause();
             }
 
             // Изменено с R на F9 для перезапуска, чтобы не конфликтовать с перезарядкой оружия (R) и тестовой перезарядкой (F5)
@@ -171,7 +198,9 @@ namespace WAD64.Managers
                 RestartLevel();
             }
 
-            if (Input.GetKeyDown(KeyCode.Escape))
+            // Escape теперь обрабатывается через Input System (InputHandler -> PlayerController -> GameManager.TogglePause())
+            // Для Game Over в debug режиме используйте другую клавишу, например F10
+            if (Input.GetKeyDown(KeyCode.F10))
             {
                 GameOver();
             }

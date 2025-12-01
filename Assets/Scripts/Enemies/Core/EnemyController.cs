@@ -18,10 +18,13 @@ namespace WAD64.Enemies
     [RequireComponent(typeof(EnemyMovement))]
     [RequireComponent(typeof(EnemyHealth))]
     [RequireComponent(typeof(EnemyAttack))]
+
     public class EnemyController : MonoBehaviour
     {
         [Header("Enemy Settings")]
         [SerializeField] private bool initializeOnStart = true;
+        [SerializeField] private float destroyDelay = 2f; // Задержка перед уничтожением GameObject после смерти
+        [SerializeField] private bool keepCorpseOnScene = false; // Если true, труп остается на сцене вместо уничтожения
 
         // Core components
         private CharacterController characterController;
@@ -105,17 +108,28 @@ namespace WAD64.Enemies
                 // Передаем тип врага (0 = базовый, можно расширить для разных типов)
                 CoreReferences.GameManager.OnEnemyKilledHandler(0);
             }
+
+            // Если опция включена, оставляем труп на сцене
+            if (keepCorpseOnScene)
+            {
+                DisableEnemyComponents();
+            }
+            else
+            {
+                // Уничтожаем GameObject после задержки (для проигрывания анимации смерти)
+                Destroy(gameObject, destroyDelay);
+            }
         }
 
         private void OnStateChanged(EnemyState newState)
         {
             // Логирование для отладки
-            #if UNITY_EDITOR
+#if UNITY_EDITOR
             if (newState == EnemyState.Dead)
             {
                 Debug.Log($"[{gameObject.name}] Enemy died");
             }
-            #endif
+#endif
         }
 
         #endregion
@@ -162,6 +176,50 @@ namespace WAD64.Enemies
         {
             // Это будет реализовано через EnemyAI, если понадобится
             // Пока оставляем пустым, так как состояние управляется через EnemyAI
+        }
+
+        #endregion
+
+        #region Corpse Management
+
+        /// <summary>
+        /// Отключает все активные компоненты врага, оставляя только визуальную часть (труп)
+        /// </summary>
+        private void DisableEnemyComponents()
+        {
+            // Отключаем основные компоненты
+            if (enemyAI != null)
+            {
+                enemyAI.enabled = false;
+            }
+
+            if (enemyMovement != null)
+            {
+                enemyMovement.enabled = false;
+            }
+
+            if (enemyAttack != null)
+            {
+                enemyAttack.enabled = false;
+            }
+
+            if (characterController != null)
+            {
+                characterController.enabled = false;
+            }
+
+            // Отключаем компоненты визуализации направления (труп не должен поворачиваться)
+            AngleToPlayer angleToPlayer = GetComponent<AngleToPlayer>();
+            if (angleToPlayer != null)
+            {
+                angleToPlayer.enabled = false;
+            }
+
+            EnemySpriteLook spriteLook = GetComponent<EnemySpriteLook>();
+            if (spriteLook != null)
+            {
+                spriteLook.enabled = false;
+            }
         }
 
         #endregion
