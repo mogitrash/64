@@ -1,5 +1,6 @@
 using UnityEngine;
 using WAD64.Managers;
+using WAD64.UI.Menu;
 
 namespace WAD64.Core
 {
@@ -18,6 +19,7 @@ namespace WAD64.Core
         // === MANAGERS ===
         public static GameManager GameManager { get; set; }
         public static UIManager UIManager { get; set; }
+        public static MenuManager MenuManager { get; set; }
 
         // === CAMERA ===
         public static Camera MainCamera { get; set; }
